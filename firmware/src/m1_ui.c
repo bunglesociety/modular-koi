@@ -31,7 +31,7 @@ static const uint8_t M1_K_PARAM[M1_NK] = {P_E3, P_E4, P_ATK, P_DEC, P_SUS, P_REL
 static const char *const M1_K_NAME[M1_NK] = {"CUTOFF", "RESO", "ATTACK", "DECAY", "SUSTAIN", "RELEASE", "DETUNE"};
 
 /* what the screen shows: the last control touched (m1_draw.c) */
-enum { M1T_NONE, M1T_KNOB, M1T_FADER, M1T_WAVE, M1T_BTN, M1T_PAD, M1T_VOL, M1T_HOLD };
+enum { M1T_NONE, M1T_KNOB, M1T_FADER, M1T_WAVE, M1T_BTN, M1T_PAD, M1T_VOL, M1T_HOLD, M1T_PAGE };
 enum { M1_B_LEFT = 2, M1_B_RIGHT = 3, M1_B_PLAY = 16, M1_B_REC = 17 };
 static struct {
     uint8_t pad;             /* the sound's pad (hardware number) */
@@ -49,6 +49,9 @@ static struct {
     uint8_t hold, hold_used; /* ARP / SCALE / CHORD held (0xFF none); a knob turned meanwhile */
     const char *hlab;        /* M1T_HOLD: the words */
     char hval[16];
+    uint32_t beat;           /* the ARP's steps (the companion dances on them) */
+    uint8_t dancing;
+    uint8_t calin;           /* (the FM-1's SEL: a cuddle asked; none here) */
 } m1 = {.fader = {0xFF, 0xFF, 0xFF, 0xFF}, .grow = 0xFF, .hold = 0xFF};
 
 /* GLOBE, the settings: K2 .. K7 one each. Kept with the settings, in bytes no engine uses: favorites.factory[13]
@@ -90,6 +93,11 @@ static const char *g1_vname(uint32_t r, char *b)
     default: return G1_CAT_N[v];
     }
 }
+/* m1_draw.c: the line lit (the knob turned last, 3 s), what the left column says (its knob) */
+static int g1_hot(uint32_t r) { return m1.grow == r && fm1_ms - m1.grow_ms < 3000u; }
+static void g1_klab(uint32_t r, char *k) { k[0] = 'K'; k[1] = (char)('2' + r); k[2] = 0; }
+#define G1_FOOT "GLOBE: BACK"
+
 static void g1_put(uint32_t r, uint32_t v)
 {
     switch (r) {
@@ -134,6 +142,11 @@ static void g1_boot(void)                                                    /* 
 }
 
 #define M1T (&trk[0])
+
+static const char *m1_knob_name(uint32_t k) { return M1_K_NAME[k % M1_NK]; }
+
+static const char *m1_page_name(uint32_t pg) { (void)pg; return ""; }        /* (no pages on the SMK-37) */
+static const char *m1_page_knob(uint32_t pg, uint32_t k) { (void)pg; (void)k; return ""; }
 
 static void m1_touch(uint32_t kind, uint32_t what, int32_t v)
 {
@@ -415,6 +428,15 @@ static void m1_input(void)
     if (fm1_in.frames > 200u)
         m1_faders_apply(m1.fader[0] == 0xFF);
     m1_modwheel();
+    {   /* the ARP's steps: the companion dances on them */
+        static uint32_t last_arp, beat_ms;
+        if (M1T->p[P_AMODE] && (M1T->arp_note || M1T->arp_phys) && M1T->arp_idx != last_arp) {
+            m1.beat++;
+            beat_ms = fm1_ms;
+        }
+        last_arp = M1T->arp_idx;
+        m1.dancing = (uint8_t)(beat_ms && fm1_ms - beat_ms < 700u);   /* (the gaps between the steps too) */
+    }
     {   /* the cat listens: the last key */
         uint32_t n = fm1_input_note_edges();
         if (n) {

@@ -1,0 +1,318 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-only
+     Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments (the installer: Felucca's web/fm1ota.js, fm1pkg.js)
+     Copyright (C) 2026 Alexis Arakis (Bungle Society) (Modular Compagnon)
+     The installer of Modular Compagnon for the M-VAVE FM-1. tools/make_m1_installer.py --fm1 (one file to open from
+     the disk: the package inside) fills in the library (fm1pkg.js, fm1ota.js), the metadata and the picture. Chrome or
+     Edge (Web MIDI with SysEx). Back to the official firmware: M-VAVE's own updater (no stock file here). -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modular Compagnon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  /* the screen's room: old paper, sepia ink, Modular Town's greens, the terracotta of the old rug */
+  :root { --bg: #dccaa4; --grain: #d2be97; --panel: #e6d6b4; --ink: #4a3828; --dim: #7d6850; --green: #627e54; --warm: #9c5a3c;
+          --shadow: rgba(74, 56, 40, .28); --bar: #cbb68e; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #232040; --grain: #1f1c3a; --panel: #2c2850; --ink: #e6d6b2; --dim: #a59ebd; --green: #8fb07a;
+                                      --warm: #e09a76; --shadow: rgba(0, 0, 0, .45); --bar: #3a3560; }
+  }
+  :root[data-theme="dark"] { --bg: #232040; --grain: #1f1c3a; --panel: #2c2850; --ink: #e6d6b2; --dim: #a59ebd; --green: #8fb07a;
+                             --warm: #e09a76; --shadow: rgba(0, 0, 0, .45); --bar: #3a3560; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background-color: var(--bg); color: var(--ink); }
+  body { font: 15px/1.6 "IBM Plex Mono", ui-monospace, Menlo, monospace; padding: 0 16px 56px;
+         background-image: radial-gradient(var(--grain) 1px, transparent 1.2px); background-size: 7px 7px; }
+  .px { font-family: "Silkscreen", "IBM Plex Mono", monospace; letter-spacing: .04em; font-weight: 400; }
+  main { max-width: 660px; margin: 0 auto; padding-top: 26px; }
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .top a { color: var(--dim); text-decoration: none; font-size: 13px; }
+  .lang { font-family: "Silkscreen", monospace; font-size: 12px; color: var(--dim); }
+  .lang a { color: var(--dim); cursor: pointer; padding: 2px 4px; text-decoration: none; }
+  .lang a.on { color: var(--ink); text-decoration: underline; }
+  .head { display: grid; grid-template-columns: 1fr 150px; gap: 22px; align-items: end; margin: 18px 0 22px; }
+  @media (max-width: 520px) { .head { grid-template-columns: 1fr 104px; gap: 14px; } }
+  h1 { font-size: clamp(26px, 6vw, 34px); line-height: 1.05; margin: 0 0 8px; }
+  .tag { color: var(--dim); margin: 0; }
+  .screen { background: #1d1b18; padding: 8px; border-radius: 8px; box-shadow: 5px 5px 0 var(--shadow); }
+  img.map { display: block; width: 100%; height: auto; margin: 6px 0 14px; border-radius: 6px; }
+  .screen img { display: block; width: 100%; height: auto; aspect-ratio: 1; image-rendering: pixelated; }
+  .box { background: var(--panel); border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--shadow); padding: 18px 20px; margin-bottom: 22px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  ol.steps { margin: 0; padding-left: 22px; }
+  ol.steps li { margin: 5px 0; }
+  button { font-family: "Silkscreen", monospace; font-size: 15px; letter-spacing: .04em; background: var(--ink); color: var(--bg);
+           border: 0; padding: 12px 20px; cursor: pointer; box-shadow: 4px 4px 0 var(--shadow); margin: 14px 12px 0 0; }
+  button.ghost { background: transparent; color: var(--ink); outline: 3px solid var(--ink); outline-offset: -3px; box-shadow: none; }
+  button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--shadow); }
+  button:disabled { opacity: .35; cursor: default; transform: none; }
+  button:focus-visible { outline: 3px solid var(--warm); outline-offset: 3px; }
+  .bar { height: 10px; background: var(--bar); margin-top: 16px; display: flex; gap: 2px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--green); transition: width .2s; }
+  #status { margin-top: 12px; min-height: 1.6em; font-weight: 600; }
+  #status.bad { color: var(--warm); }
+  #who { margin: 10px 0 0; color: var(--dim); }
+  details { margin-top: 10px; font-size: 12px; color: var(--dim); }
+  details.back summary { font-family: "Silkscreen", monospace; font-size: 14px; color: var(--ink); cursor: pointer; }
+  pre { white-space: pre-wrap; font-size: 11.5px; margin: 6px 0 0; max-height: 180px; overflow: auto; }
+  input[type=file] { font: inherit; font-size: 13px; margin-top: 8px; max-width: 100%; color: var(--ink); }
+  .after { display: none; }
+  .after.on { display: block; }
+  .warn { border-color: var(--warm); }
+  .warn h2 { color: var(--warm); }
+  dl.ctl { display: grid; grid-template-columns: 9.5em 1fr; gap: 4px 14px; margin: 0; font-size: 13.5px; }
+  @media (max-width: 520px) { dl.ctl { grid-template-columns: 1fr; } dl.ctl dd { margin-bottom: 6px; } }
+  dl.ctl dt { font-family: "Silkscreen", monospace; font-size: 12.5px; }
+  dl.ctl dd { margin: 0; }
+  .small { font-size: 12.5px; color: var(--dim); }
+  .small a, .box a { color: inherit; }
+  p { margin: 0 0 10px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><a href="../" class="px" id="home">← MODULAR COMPAGNON</a><div class="lang"><a data-lang="fr">FR</a>/<a data-lang="en">EN</a></div></div>
+  <div class="head">
+    <div><h1 class="px" data-t="title"></h1><p class="tag" data-t="tag"></p></div>
+    <div class="screen"><img src="/*HERO*/" alt="" width="240" height="240"></div>
+  </div>
+
+  <div class="box">
+    <h2 class="px" data-t="h1"></h2>
+    <ol class="steps"><li data-t="s1"></li><li data-t="s2"></li><li data-t="s3"></li></ol>
+    <button id="check" class="ghost" data-t="check"></button>
+    <p id="who"></p>
+  </div>
+
+  <div class="box">
+    <h2 class="px" data-t="h2"></h2>
+    <p data-t="s4"></p>
+    <button id="go" disabled data-t="install"></button>
+    <div class="bar"><i id="bar"></i></div>
+    <p id="status"></p>
+    <details><summary data-t="details"></summary><pre id="log"></pre></details>
+  </div>
+
+  <div class="box after" id="after">
+    <h2 class="px" data-t="nextTitle"></h2>
+    <p data-t="next1"></p>
+    <dl class="ctl">
+      <dt data-t="c1t"></dt><dd data-t="c1"></dd>
+      <dt data-t="c2t"></dt><dd data-t="c2"></dd>
+      <dt data-t="c3t"></dt><dd data-t="c3"></dd>
+      <dt data-t="c4t"></dt><dd data-t="c4"></dd>
+      <dt data-t="c5t"></dt><dd data-t="c5"></dd>
+      <dt data-t="c6t"></dt><dd data-t="c6"></dd>
+      <dt data-t="c7t"></dt><dd data-t="c7"></dd>
+      <dt data-t="c8t"></dt><dd data-t="c8"></dd>
+    </dl>
+  </div>
+
+  <div class="box warn">
+    <h2 class="px" data-t="riskTitle"></h2>
+    <p data-t="beta"></p>
+    <p class="small" data-t="presets"></p>
+    <p class="small"><span data-t="back"></span> <a href="https://www.m-vave.com/download" target="_blank" rel="noopener">www.m-vave.com/download</a></p>
+    <p class="small"><span data-t="brick"></span>
+      <a href="https://github.com/kurogedelic/FM-1-transporter" target="_blank" rel="noopener">FM-1-transporter</a></p>
+  </div>
+
+  <p class="small">Modular Compagnon by Alexis Arakis, <a href="https://bunglesociety.com" target="_blank" rel="noopener">Bungle Society</a>.
+    <span data-t="based"></span> Felucca by Leo Kuroshita (@kurogedelic), <a href="https://hugelton.com" target="_blank" rel="noopener">Hügelton Instruments</a>.<br>
+    Font: Silkscreen (SIL OFL 1.1). The package holds three JieLi AC79 SDK files (Apache-2.0).<br>
+    M-VAVE and FM-1 are trademarks of their respective owners. <span data-t="notmvave"></span><br>
+    <span data-t="license"></span> <a href="https://github.com/bunglesociety/modular-compagnon" target="_blank" rel="noopener">github.com/bunglesociety/modular-compagnon</a></p>
+</main>
+<script>
+/*LIB*/
+const $ = (id) => document.getElementById(id);
+const TEXT = {
+  fr: {
+    title: "Modular Compagnon FM-1", tag: "Le firmware de Bungle Society pour le M-VAVE FM-1 : seize sons de Modular Town, un écho qui glisse, un arpégiateur, et un petit compagnon qui vit dans l'écran.",
+    h1: "1. Brancher", s1: "Ouvre cette page dans Chrome ou Edge, sur un ordinateur (pas Safari, pas Firefox, pas de téléphone).",
+    s2: "Branche le FM-1 directement à l'ordinateur avec un câble USB de données (pas de hub). Allume-le.",
+    s3: "Ferme les autres logiciels qui utilisent le MIDI (ton logiciel de musique, l'app M-VAVE…).",
+    check: "Lire le FM-1", h2: "2. Installer",
+    s4: "Clique Installer, autorise le MIDI quand Chrome le demande, et ne débranche rien jusqu'à « Terminé » (environ 2 minutes). Le FM-1 redémarre tout seul.",
+    install: "Installer", details: "Détails techniques",
+    nextTitle: "Et maintenant ?",
+    next1: "Le FM-1 redémarre sur Modular Compagnon. Le chat s'installe dans l'écran. Les quatre potards font ce que dit la page ; un bouton choisit la page :",
+    c1t: "PRESETS · SAVE", c1: "Les seize sons : MODULAR, JUNO, SUPERSAW, PWM, TAPE, FM, SOUFFLE, CRÉPUSCULE, FLÛTE, BRASS, STRINGS, CHOIR, RAIN, DEEP, PULSE, MEMORY. SAVE garde ton réglage du son (maintenu 2 s : le réglage d'origine).",
+    c2t: "SELECT · ALGORITHM", c2: "Jour / nuit (le compagnon s'endort la nuit) · l'hiver (la neige tombe ; la Montée sur Souffle et Crépuscule).",
+    c3t: "HOME · ENV", c3: "Cutoff, réso, detune, écho · attaque, decay, sustain, release.",
+    c4t: "EDIT · LFO", c4: "Onde 1, onde 2, glide, voix (POLY / MONO) · MOD (le filtre ondule), vibrato, trémolo, vitesse.",
+    c5t: "FX", c5: "Temps de l'écho (il glisse comme un écho analogique), écho, tape (le pleurage de la bande), warmth (la chaleur).",
+    c6t: "ARP", c6: "Un appui : on / off. Maintenu : K1 le mode, K2 la vitesse, K3 le tempo. Il suit un DAW tout seul et lui envoie ses notes. Le compagnon danse.",
+    c7t: "PLAY · REC · SEQ", c7: "Le magnéto : PLAY (ou OCT- et OCT+ maintenus 1 s, comme dans Modular One) joue tes morceaux (envoyés avec l'appli Carnet) puis tes croquis ; OCT+ le suivant, OCT- le début. REC maintenu garde ta dernière phrase dans le carnet (encore : la phrase d'avant). SEQ maintenu : la liste, K1 choisit ; REC deux fois efface un croquis.",
+    c8t: "SEL · GLO · MASTER · OCT", c8: "Du temps avec le compagnon (câlins, jeu, cache-cache, un cadeau) · les réglages (K1 la ligne, K2 la valeur : le compagnon, l'humeur, le canal MIDI, l'accordage, le haut-parleur, la veille) · le volume · l'octave.",
+    riskTitle: "À lire avant",
+    beta: "Modular Compagnon est une version bêta, non officielle. Elle peut avoir des bugs. Tu l'installes à tes risques : l'auteur ne peut pas être tenu responsable d'un problème sur ton FM-1.",
+    presets: "L'installation remplace le firmware M-VAVE : les presets que tu as faits avec le firmware d'origine sont perdus, et on ne peut pas les exporter avant.",
+    back: "Pour revenir au firmware officiel : l'outil de mise à jour de M-VAVE (Downloads), avec le firmware officiel du FM-1.",
+    brick: "Si une installation échoue et que le FM-1 ne démarre plus, il faut un Transporter pour le récupérer :",
+    confirm: "Installer Modular Compagnon sur le FM-1 ? Les presets du firmware d'origine seront perdus.",
+    based: "Basé sur", license: "Logiciel libre GPL-3.0, sans garantie. Code source :", notmvave: "Modular Compagnon n'est ni fait ni soutenu par M-VAVE ou Hügelton Instruments.",
+    nomidi: "Ce navigateur ne peut pas le faire. Ouvre la page dans Chrome ou Edge.", loadfail: "Impossible de charger : ",
+    ready: "Prêt : Modular Compagnon FM-1 ", start: "Le FM-1 répond, on commence", verify: "Vérification", loader: "Passage en mode mise à jour",
+    write: "Écriture… ne débranche pas", reboot: "Redémarrage", done: "Terminé. Ton compagnon est chez lui.",
+    stopped: "Arrêté. Rebranche le câble USB et clique encore sur Installer : l'écriture reprend.",
+    error: "Erreur : ",
+    denied: "Le MIDI (SysEx) n'a pas été autorisé. Autorise le MIDI dans les réglages du site (à gauche de l'adresse) et clique encore.",
+    notfound: "FM-1 introuvable. Vérifie le câble USB (un câble de données), ferme les autres apps MIDI, et clique encore.",
+    model: "L'appareil branché n'est pas un FM-1 : rien n'a été écrit.",
+    lost: "La connexion USB a été perdue. Rebranche et clique encore sur Installer.",
+    noloader: "Le FM-1 en mode mise à jour est introuvable. Rebranche le câble USB et clique encore (il reste en mode mise à jour jusqu'à la fin).",
+    noreturn: "Le FM-1 n'est pas revenu. Éteins-le et rallume-le.",
+    mismatch: "Écrit, mais le FM-1 annonce une autre version : ",
+    badpkg: "Le fichier à installer est abîmé. Recharge la page.",
+    leave: "Écriture en cours. Ne ferme pas la page.",
+    whoOta: " : le FM-1 est en mode mise à jour. Clique Installer pour finir l'écriture.",
+    whoMine: " : Modular Compagnon est installé.", whoFm1: " : un FM-1. Prêt pour l'installation.",
+    whoOther: " : ce n'est pas un FM-1, cette page n'écrira rien dessus.",
+  },
+  en: {
+    title: "Modular Compagnon FM-1", tag: "Bungle Society's firmware for the M-VAVE FM-1: sixteen Modular Town sounds, a gliding echo, an arpeggiator, and a little companion who lives in the screen.",
+    h1: "1. Connect", s1: "Open this page in Chrome or Edge, on a computer (not Safari, not Firefox, not a phone).",
+    s2: "Connect the FM-1 straight to the computer with a USB data cable (no hub). Switch it on.",
+    s3: "Close other apps that use MIDI (your DAW, the M-VAVE app…).",
+    check: "Read the FM-1", h2: "2. Install",
+    s4: "Click Install, allow MIDI when Chrome asks, and unplug nothing until \"Done\" (about 2 minutes). The FM-1 restarts by itself.",
+    install: "Install", details: "Technical details",
+    nextTitle: "What now?",
+    next1: "The FM-1 restarts on Modular Compagnon. The cat moves into the screen. The four knobs do what the page says; a button picks the page:",
+    c1t: "PRESETS · SAVE", c1: "The sixteen sounds: MODULAR, JUNO, SUPERSAW, PWM, TAPE, FM, SOUFFLE, CRÉPUSCULE, FLUTE, BRASS, STRINGS, CHOIR, RAIN, DEEP, PULSE, MEMORY. SAVE keeps your take on the sound (held 2 s: the original).",
+    c2t: "SELECT · ALGORITHM", c2: "Day / night (the companion sleeps at night) · the winter (snow falls; the Rise on Souffle and Crépuscule).",
+    c3t: "HOME · ENV", c3: "Cutoff, resonance, detune, echo · attack, decay, sustain, release.",
+    c4t: "EDIT · LFO", c4: "Wave 1, wave 2, glide, voice (POLY / MONO) · MOD (the filter waves), vibrato, tremolo, speed.",
+    c5t: "FX", c5: "Echo time (it glides like an analog delay), echo, tape (the wow), warmth.",
+    c6t: "ARP", c6: "A tap: on / off. Held: K1 the mode, K2 the speed, K3 the tempo. It follows a DAW by itself and sends it its notes. The companion dances.",
+    c7t: "PLAY · REC · SEQ", c7: "The tape: PLAY (or OCT- and OCT+ held 1 s, as in Modular One) plays your songs (sent with the Carnet app), then your sketches; OCT+ the next, OCT- the start. REC held keeps your last phrase in the sketchbook (again: the one before). SEQ held: the list, K1 chooses; REC twice erases a sketch.",
+    c8t: "SEL · GLO · MASTER · OCT", c8: "Time with the companion (cuddles, play, hide and seek, a present) · the settings (K1 the line, K2 the value: companion, mood, MIDI channel, tuning, speaker, sleep) · volume · octave.",
+    riskTitle: "Read this first",
+    beta: "Modular Compagnon is an unofficial beta. It may have bugs. You install it at your own risk: the author cannot be held responsible for any problem with your FM-1.",
+    presets: "Installing replaces the M-VAVE firmware: the presets you made with the original firmware are lost, and they cannot be exported first.",
+    back: "To go back to the official firmware: M-VAVE's updater (Downloads), with the official FM-1 firmware.",
+    brick: "If an install fails and the FM-1 no longer starts, recovering it needs a Transporter:",
+    confirm: "Install Modular Compagnon on the FM-1? The original firmware's presets will be lost.",
+    based: "Based on", license: "Free software, GPL-3.0, no warranty. Source:", notmvave: "Modular Compagnon is not made or supported by M-VAVE or Hügelton Instruments.",
+    nomidi: "This browser cannot do it. Open the page in Chrome or Edge.", loadfail: "Could not load: ",
+    ready: "Ready: Modular Compagnon FM-1 ", start: "The FM-1 answers, starting", verify: "Verifying", loader: "Switching to update mode",
+    write: "Writing… do not unplug", reboot: "Restarting", done: "Done. Your companion is home.",
+    stopped: "Stopped. Replug the USB cable and click Install again: the writing resumes.",
+    error: "Error: ",
+    denied: "MIDI (SysEx) access was not allowed. Allow MIDI in the site settings (left of the address) and click again.",
+    notfound: "FM-1 not found. Check the USB cable (a data cable), close other MIDI apps, and click again.",
+    model: "The connected device is not an FM-1: nothing was written.",
+    lost: "The USB connection was lost. Replug it and click Install again.",
+    noloader: "The FM-1 in update mode was not found. Replug the USB cable and click again (it stays in update mode until it is finished).",
+    noreturn: "The FM-1 did not come back. Switch it off and on.",
+    mismatch: "Written, but the FM-1 reports another version: ",
+    badpkg: "The file to install is damaged. Reload the page.",
+    leave: "Writing. Do not close the page.",
+    whoOta: ": the FM-1 is in update mode. Click Install to finish the writing.",
+    whoMine: ": Modular Compagnon is installed.", whoFm1: ": an FM-1. Ready to install.",
+    whoOther: ": not an FM-1, this page will write nothing to it.",
+  },
+};
+let lang = (() => { try { return localStorage.getItem("mclang"); } catch (e) { return null; } })() || ((navigator.language || "en").toLowerCase().startsWith("fr") ? "fr" : "en");
+if (!TEXT[lang]) lang = "en";
+const t = (k) => TEXT[lang][k];
+let lastKey = null, lastArg = "", lastBad = false, whoKey = null, whoId = "";
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach((e) => { e.textContent = t(e.dataset.t); });
+  document.querySelectorAll("[data-lang]").forEach((a) => a.classList.toggle("on", a.dataset.lang === lang));
+  if (lastKey) sayK(lastKey, lastArg, lastBad);
+  if (whoKey) $("who").textContent = whoId + t(whoKey);
+}
+document.querySelectorAll("[data-lang]").forEach((a) => a.addEventListener("click", () => { lang = a.dataset.lang; try { localStorage.setItem("mclang", lang); } catch (e) {} applyLang(); }));
+const sayK = (k, arg = "", bad = false) => { lastKey = k; lastArg = arg; lastBad = bad; $("status").textContent = t(k) + arg; $("status").className = bad ? "bad" : ""; };
+const log = (s) => { $("log").textContent += s + "\n"; };
+const bar = (f) => { $("bar").style.width = `${Math.max(0, Math.min(100, f))}%`; };
+const meta = /*META*/;
+$("home").href = "https://bunglesociety.github.io/modular-compagnon/";
+applyLang();
+let image = null, busy = false;
+const lock = (on) => { busy = on; $("go").disabled = on || !image; $("check").disabled = on; };
+window.addEventListener("beforeunload", (e) => { if (busy) { e.preventDefault(); e.returnValue = t("leave"); } });
+
+(async () => {
+  if (!navigator.requestMIDIAccess) { sayK("nomidi", "", true); return; }
+  try {
+    let pkg;
+    if (meta.b64) pkg = Uint8Array.from(atob(meta.b64), (c) => c.charCodeAt(0));
+    else {
+      const r = await fetch(meta.pkg);
+      if (!r.ok) throw new Error(`${meta.pkg}: HTTP ${r.status}`);
+      pkg = new Uint8Array(await r.arrayBuffer());
+    }
+    if (productOf(pkg) !== meta.product) { sayK("badpkg", "", true); return; }
+    image = logicalImage(pkg);
+    sayK("ready", meta.version);
+    lock(false);
+  } catch (e) { sayK("loadfail", e.message, true); }
+})();
+
+async function midi() {
+  try { return await navigator.requestMIDIAccess({ sysex: true }); }
+  catch (e) { sayK("denied", "", true); return null; }
+}
+
+$("check").addEventListener("click", async () => {
+  if (busy) return;
+  const m = await midi();
+  if (!m) return;
+  lock(true);
+  try {
+    const dev = await new Updater(m, log).find(null);
+    if (!dev) { whoKey = null; $("who").textContent = t("notfound"); }
+    else {
+      dev.link.close();
+      whoId = dev.id.text;
+      whoKey = /^ota-/i.test(dev.id.model) ? "whoOta" : whoId === meta.product ? "whoMine"
+             : sameModel(dev.id.model, meta.product.split("_")[0]) ? "whoFm1" : "whoOther";
+      $("who").textContent = whoId + t(whoKey);
+    }
+  } catch (e) { $("who").textContent = t("error") + e.message; }
+  lock(false);
+});
+
+async function run(img, product, doneKey) {
+  const m = await midi();
+  if (!m) return;
+  lock(true);
+  $("after").classList.remove("on");
+  bar(0);
+  try {
+    const up = new Updater(m, log);
+    const step = (k, a) => {
+      log(`${k} ${a ?? ""}`);
+      if (k === "start") sayK("start");
+      if (k === "verify") { sayK("verify"); bar(Math.min(8, a / 9)); }
+      if (k === "loader") sayK("loader");
+      if (k === "write") { sayK("write"); bar(8 + Math.min(90, (a * 512 / img.length) * 90)); }
+      if (k === "reboot") sayK("reboot");
+      if (k === "done") bar(100);
+    };
+    const ota = await up.find((id) => /^ota-/i.test(id.model));
+    let ok = true;
+    if (ota) { ota.link.close(); ok = await up.resume(img, step, product); }
+    else await up.install(img, product, step);
+    sayK(ok ? doneKey : "stopped", "", !ok);
+    if (ok && doneKey === "done") $("after").classList.add("on");
+  } catch (e) {
+    if (e && e.code && TEXT[lang][e.code]) sayK(e.code, e.code === "mismatch" ? (e.detail || "") : "", true);
+    else sayK("error", e && e.message, true);
+    log(String(e && e.stack || e));
+  }
+  lock(false);
+}
+
+$("go").addEventListener("click", () => { if (!busy && image && confirm(t("confirm"))) run(image, meta.product, "done"); });
+
+</script>
+</body>
+</html>

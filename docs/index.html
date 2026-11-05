@@ -1,0 +1,188 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-only. Modular Koi (Alexis Arakis, Bungle Society): tools/make_koi_site.py -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modular Koi</title>
+<meta name="description" content="Modular Koi: a free firmware that turns the M-VAVE FM-1 into a steel tongue drum played with the thumbs, over a pond of koi. By Bungle Society.">
+<style>
+html, body { margin: 0; background: #c9d3a6; }
+
+/* Modular Koi, page bunglesociety.com: a Squarespace code block (HTML + CSS only, no script: the Basic plan).
+   The page itself is painted in the pond's palest green (below); the rest is scoped under .mkw. FR / EN: two radio
+   buttons, CSS only. tools/make_koi_site.py wraps this same block into the GitHub Pages home. */
+@import url("https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap");
+/* the whole page on the paper: this block is only on this page, so these rules touch only it
+   (Squarespace 7.1: each section draws its colour in .section-background; the header and footer too) */
+.mkw { --bg: #c9d3a6; --grain: #bcc794; --panel: #d8e0b6; --dim: #306230; --ink: #0f380f; --green: #306230; --warm: #8c3b1f;
+       --night: #0d2112; --shadow: rgba(15, 56, 15, .28);
+       background-color: var(--bg); background-image: radial-gradient(var(--grain) 1px, transparent 1.2px); background-size: 7px 7px;
+       color: var(--ink); font: 15px/1.65 "IBM Plex Mono", ui-monospace, Menlo, monospace;
+       padding: 28px clamp(16px, 4vw, 44px) 40px; box-sizing: border-box; text-align: left; }
+.mkw *, .mkw *::before, .mkw *::after { box-sizing: border-box; }
+.mkw p, .mkw h1, .mkw h2, .mkw h3, .mkw ul { margin: 0; padding: 0; color: var(--ink); text-transform: none; letter-spacing: normal; }
+.mkw a { color: var(--ink); }
+.mkw .px { font-family: "Silkscreen", "IBM Plex Mono", monospace !important; letter-spacing: .04em; font-weight: 400 !important; }
+
+/* the language switch: two radios, the words of the other language hidden */
+.mkw input.mkw-l { position: absolute; opacity: 0; pointer-events: none; }
+.mkw img.map { display: block; width: 100%; height: auto; margin: 8px 0 18px; border-radius: 6px; }
+.mkw .lang { display: flex; justify-content: flex-end; gap: 4px; font-family: "Silkscreen", monospace; font-size: 12px; color: var(--dim); }
+.mkw .lang label { cursor: pointer; padding: 2px 6px; color: var(--dim); }
+.mkw #mkw-fr:checked ~ .lang label[for="mkw-fr"], .mkw #mkw-en:checked ~ .lang label[for="mkw-en"] { color: var(--ink); text-decoration: underline; }
+.mkw #mkw-fr:checked ~ * .en, .mkw #mkw-en:checked ~ * .fr { display: none !important; }
+
+.mkw .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; padding: 26px 0 28px; }
+@media (max-width: 820px) { .mkw .hero { grid-template-columns: 1fr; gap: 26px; } }
+.mkw h1 { font-size: clamp(36px, 6.2vw, 62px) !important; line-height: .95 !important; margin: 0 0 18px; }
+.mkw .lead { font-size: 17px; margin-bottom: 22px; max-width: 520px; }
+.mkw .cta { display: flex; flex-wrap: wrap; gap: 14px; }
+.mkw a.btn { font-family: "Silkscreen", monospace; font-size: 15px; letter-spacing: .04em; text-decoration: none; padding: 13px 20px;
+             background: var(--ink); color: var(--bg); box-shadow: 4px 4px 0 var(--shadow); display: inline-block; }
+.mkw a.btn:hover { filter: brightness(1.18); }
+.mkw a.btn.ghost { background: transparent; color: var(--ink); outline: 3px solid var(--ink); outline-offset: -3px; box-shadow: none; }
+.mkw .note { font-size: 12.5px; color: var(--dim); margin-top: 14px; }
+.mkw .screen { background: #1d1b18; padding: 20px 20px 14px; border-radius: 10px; box-shadow: 8px 8px 0 var(--shadow); max-width: 440px; width: 100%; justify-self: center; }
+.mkw .screen img { display: block; width: 100%; height: auto; aspect-ratio: 1; image-rendering: pixelated; border: 2px solid #000; }
+.mkw .screen .lbl { color: #8c8678; font-family: "Silkscreen", monospace; font-size: 11px; letter-spacing: .08em; margin-top: 10px; display: flex; justify-content: space-between; gap: 10px; }
+
+.mkw section { padding: 30px 0 4px; border-top: 3px solid var(--ink); margin-top: 24px; }
+.mkw h2 { font-size: 22px !important; margin-bottom: 16px; }
+.mkw .story { max-width: 720px; font-size: 16px; }
+.mkw .story p + p { margin-top: 12px; }
+
+.mkw .family { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; background: var(--panel); border: 3px solid var(--ink); padding: 14px 18px; font-size: 14px; }
+.mkw .family b { font-family: "Silkscreen", monospace; font-weight: 400; letter-spacing: .04em; }
+.mkw .family .grow { flex: 1; min-width: 220px; }
+.mkw .family a { font-family: "Silkscreen", monospace; font-size: 13px; white-space: nowrap; }
+
+.mkw .feats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+@media (max-width: 900px) { .mkw .feats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .mkw .feats { grid-template-columns: 1fr; } }
+.mkw .feat { background: var(--panel); border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--shadow); }
+.mkw .feat img { display: block; width: 100%; height: auto; aspect-ratio: 1; image-rendering: pixelated; border-bottom: 3px solid var(--ink); }
+.mkw .feat div { padding: 14px 16px 16px; }
+.mkw .feat h3 { font-size: 15px !important; margin-bottom: 6px; }
+.mkw .feat p { font-size: 13.5px; }
+
+.mkw .ctl { display: grid; grid-template-columns: 12em 1fr; gap: 6px 18px; max-width: 760px; font-size: 14px; }
+@media (max-width: 600px) { .mkw .ctl { grid-template-columns: 1fr; gap: 2px; } .mkw .ctl dd { margin-bottom: 8px !important; } }
+.mkw .ctl dt { font-family: "Silkscreen", monospace; font-size: 13px; letter-spacing: .03em; }
+.mkw .ctl dd { margin: 0; }
+
+.mkw ol.steps { counter-reset: s; list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+@media (max-width: 760px) { .mkw ol.steps { grid-template-columns: 1fr; } }
+.mkw ol.steps li { counter-increment: s; background: var(--panel); border: 3px solid var(--ink); padding: 16px 16px 14px; font-size: 14px; margin: 0; }
+.mkw ol.steps li::before { content: counter(s); font-family: "Silkscreen", monospace; font-size: 28px; display: block; line-height: 1; margin-bottom: 8px; color: var(--green); }
+.mkw .after { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.mkw .faq details { border-bottom: 2px dashed var(--dim); padding: 10px 0; }
+.mkw .faq summary { cursor: pointer; font-weight: 600; list-style: none; }
+.mkw .faq summary::-webkit-details-marker { display: none; }
+.mkw .faq summary::before { content: "▸ "; font-family: "Silkscreen", monospace; }
+.mkw .faq details[open] summary::before { content: "▾ "; }
+.mkw .faq p { margin: 8px 0 4px 18px; font-size: 14px; }
+.mkw .foot { margin-top: 34px; font-size: 12.5px; color: var(--dim); border-top: 3px solid var(--ink); padding-top: 12px; }
+.mkw .foot a { color: var(--dim); }
+.mkw .listen { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; background: var(--panel); border: 3px solid var(--ink); padding: 14px 18px; margin-top: 22px; }
+.mkw .listen b { font-family: "Silkscreen", monospace; font-weight: 400; letter-spacing: .04em; }
+.mkw .listen audio { flex: 1; min-width: 240px; max-width: 520px; }
+.mkw .feat img.wide { aspect-ratio: auto; }
+
+.mkw { max-width: 1120px; margin: 0 auto; min-height: 100vh; }
+</style>
+</head>
+<body>
+<div class="mkw">
+  <input type="radio" name="mkw-lang" id="mkw-fr" class="mkw-l" checked>
+  <input type="radio" name="mkw-lang" id="mkw-en" class="mkw-l">
+  <div class="lang"><label for="mkw-fr">FR</label>/<label for="mkw-en">EN</label></div>
+
+  <div class="hero">
+    <div>
+      <h1 class="px">Modular<br>Koi</h1>
+      <p class="lead"><span class="fr">Un firmware gratuit qui transforme le synthé M-VAVE FM-1 en tambour à languettes. Tu le tiens à deux mains comme une console portable et tu joues avec les pouces. Chaque note tombe comme une goutte dans un bassin où nagent des carpes koï.</span><span class="en">A free firmware that turns the M-VAVE FM-1 synth into a steel tongue drum. You hold it in both hands like a handheld console and play with your thumbs. Every note falls like a drop into a pond where koi swim.</span></p>
+      <p class="note" style="margin:0 0 22px"><span class="fr">Par Alexis Arakis, compositeur, Bungle Society</span><span class="en">By Alexis Arakis, composer, Bungle Society</span> · <a href="https://www.youtube.com/@bunglesociety" target="_blank" rel="noopener">YouTube</a></p>
+      <div class="cta">
+        <a class="btn" href="install/" target="_blank" rel="noopener"><span class="fr">Installer</span><span class="en">Install</span></a>
+        <a class="btn ghost" href="https://github.com/bunglesociety/modular-koi" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <p class="note"><span class="fr">Gratuit et libre (GPL-3.0). Version bêta. Chrome ou Edge sur ordinateur.</span><span class="en">Free and open source (GPL-3.0). Beta. Chrome or Edge on a computer.</span></p>
+    </div>
+    <div class="screen">
+      <img src="img/bassin.gif" alt="Modular Koi" width="240" height="240">
+      <div class="lbl"><span>M-VAVE FM-1</span><span>MODULAR KOI</span></div>
+    </div>
+  </div>
+
+  <div class="listen"><b><span class="fr">Écouter</span><span class="en">Listen</span></b><audio controls preload="none" src="img/koi-demo.mp3"></audio><span class="note" style="margin:0"><span class="fr">Le FM-1 lui-même : une phrase aux pouces, puis la pluie qui répond, et la nuit qui tombe.</span><span class="en">The FM-1 itself: a phrase on the thumbs, then the rain answering, and the night falling.</span></span></div>
+
+  <div class="family">
+    <span class="grow"><b><span class="fr">La famille Modular :</span><span class="en">The Modular family:</span></b> <span class="fr">Modular Town, le synthé-ville pour ton ordinateur (un patch gratuit pour Amorph). Modular One, le firmware de musique de film du FM-1. Modular Compagnon, sur le clavier SMK-37. Et Modular Koi, le plus calme.</span><span class="en">Modular Town, the town-synth for your computer (a free patch for Amorph). Modular One, the FM-1's film-music firmware. Modular Compagnon, on the SMK-37 keyboard. And Modular Koi, the calmest.</span></span>
+    <a href="https://amorph.audio/patches/modular-town-v3/" target="_blank" rel="noopener">Modular Town →</a>
+    <a href="https://bunglesociety.github.io/modular-one/" target="_blank" rel="noopener">Modular One →</a>
+    <a href="https://bunglesociety.github.io/modular-compagnon/" target="_blank" rel="noopener">Modular Compagnon →</a>
+  </div>
+
+  <section>
+    <h2 class="px"><span class="fr">Un tambour sous les pouces</span><span class="en">A drum under the thumbs</span></h2>
+    <div class="story"><p class="fr">J'ai un tambour à languettes en do. Son son me calme, et j'avais envie de l'emporter partout. Modular Koi en est la version FM-1 : pas un clavier, un instrument qu'on tient à deux mains, les pouces sur les lames. Les touches suivent l'ordre des lames du vrai tambour, les graves à l'extérieur, comme sur l'instrument.</p><p class="en">I have a steel tongue drum in C. Its sound calms me, and I wanted to take it everywhere. Modular Koi is its FM-1 version: not a keyboard, an instrument you hold in both hands, thumbs on the tongues. The keys follow the order of the real drum's tongues, the low ones on the outside, as on the instrument.</p><p class="fr">Le son est synthétisé, pas échantillonné : chaque lame a ses deux modes proches qui battent doucement, son octave, ses harmoniques de métal, et la résonance des autres lames quand la main ne les tient pas. L'écran est un bassin vu d'en haut, sans cadre dessiné : le bord de l'écran du FM-1 en est la margelle. Chaque note est une goutte, les ronds rebondissent sur les bords, et le tambour peut leur répondre.</p><p class="en">The sound is synthesized, not sampled: each tongue has its two close modes beating gently, its octave, its metal overtones, and the ringing of the other tongues when the hand does not hold them. The screen is a pond seen from above, with no drawn frame: the edge of the FM-1's screen is its rim. Every note is a drop, the ripples bounce off the edges, and the drum can answer them.</p></div>
+  </section>
+
+  <section>
+    <h2 class="px"><span class="fr">Ce qu'il y a dedans</span><span class="en">What's inside</span></h2>
+    <div class="feats">
+      <div class="feat"><img src="img/bassin.gif" alt="" width="240" height="240" loading="lazy"><div><h3 class="px"><span class="fr">Le tambour</span><span class="en">The drum</span></h3><p><span class="fr">Onze lames en do majeur, comme le vrai : sol, la, si sous le do, puis une octave jusqu'au do aigu. Chaque frappe est un peu différente, et les lames que la main ne tient pas résonnent avec elle.</span><span class="en">Eleven tongues in C major, like the real one: G, A, B under the C, then an octave up to the high C. Every strike is a little different, and the tongues the hand does not hold ring along with it.</span></p></div></div>
+      <div class="feat"><img src="img/pluie.gif" alt="" width="240" height="240" loading="lazy"><div><h3 class="px"><span class="fr">La pluie</span><span class="en">The rain</span></h3><p><span class="fr">ARP : le tambour joue seul, lentement. Des phrases qui respirent, un motif qui revient changé, de longs silences. Quand tu joues, il t'écoute, puis il te répond.</span><span class="en">ARP: the drum plays by itself, slowly. Phrases that breathe, a motif that comes back changed, long silences. When you play, it listens, then answers you.</span></p></div></div>
+      <div class="feat"><img src="img/nuit.gif" alt="" width="240" height="240" loading="lazy"><div><h3 class="px"><span class="fr">La nuit</span><span class="en">The night</span></h3><p><span class="fr">SELECT fait tomber le soir sur le bassin. La lune se reflète dans l'eau, la pluie ralentit, le son s'assombrit un peu.</span><span class="en">SELECT brings the evening onto the pond. The moon shows in the water, the rain slows down, the sound gets a little darker.</span></p></div></div>
+      <div class="feat"><img src="img/roulement.gif" alt="" width="240" height="240" loading="lazy"><div><h3 class="px"><span class="fr">Les roulements</span><span class="en">The rolls</span></h3><p><span class="fr">Deux touches sous les pouces : un roulement qui part vite et ralentit, comme un doigt qui rebondit, et un qui part lentement et accélère.</span><span class="en">Two keys under the thumbs: a roll that starts fast and slows down, like a bouncing finger, and one that starts slow and speeds up.</span></p></div></div>
+      <div class="feat"><img src="img/repas.gif" alt="" width="240" height="240" loading="lazy"><div><h3 class="px"><span class="fr">Les carpes</span><span class="en">The koi</span></h3><p><span class="fr">Jusqu'à cinq carpes nagent sous l'eau. Elles viennent voir chaque goutte. SEL leur donne à manger, et elles se précipitent.</span><span class="en">Up to five koi swim under the water. They come to look at every drop. SEL feeds them, and they rush in.</span></p></div></div>
+      <div class="feat"><img src="img/magneto.gif" alt="" width="240" height="240" loading="lazy"><div><h3 class="px"><span class="fr">Le magnéto</span><span class="en">The tape</span></h3><p><span class="fr">Le même que dans Modular One : maintiens REC pour garder ta dernière phrase dans le carnet, OCT- et OCT+ maintenus pour l'écouter.</span><span class="en">The same as in Modular One: hold REC to keep your last phrase in the sketchbook, hold OCT- and OCT+ to listen to it.</span></p></div></div>
+      <div class="feat"><img src="img/liste.png" alt="" width="240" height="240" loading="lazy"><div><h3 class="px"><span class="fr">Le carnet</span><span class="en">The sketchbook</span></h3><p><span class="fr">Maintiens SEQ : la liste de tes croquis et de tes morceaux. K1 choisit, REC deux fois efface, lâcher SEQ joue ton choix.</span><span class="en">Hold SEQ: the list of your sketches and songs. K1 chooses, REC twice erases, letting go of SEQ plays your choice.</span></p></div></div>
+      <div class="feat"><img src="img/reglages.png" alt="" width="240" height="240" loading="lazy"><div><h3 class="px"><span class="fr">Les réglages</span><span class="en">The settings</span></h3><p><span class="fr">GLO : la tonalité (de do à si), le nombre de carpes, les ronds sur l'eau, l'hiver (la neige tombe sur le bassin), le canal MIDI, l'accordage, le haut-parleur, la veille.</span><span class="en">GLO: the key (C to B), how many koi, the ripples on the water, winter (snow falls on the pond), MIDI channel, tuning, speaker, sleep.</span></p></div></div>
+      <div class="feat"><img src="img/demarrage.gif" alt="" width="240" height="240" loading="lazy"><div><h3 class="px"><span class="fr">Le démarrage</span><span class="en">The start-up</span></h3><p><span class="fr">BUNGLE SOCIETY descend au milieu de l'écran, le tambour fait son petit « pling », et une carpe tourne sur elle-même.</span><span class="en">BUNGLE SOCIETY comes down to the middle of the screen, the drum gives its little "pling", and a koi turns on itself.</span></p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="px"><span class="fr">Où mettre les pouces</span><span class="en">Where your thumbs go</span></h2>
+    <a class="map fr" href="img/touches-fr.png" target="_blank" rel="noopener"><img class="map" src="img/touches-fr.png" alt="Les touches du FM-1 : les lames du tambour sous chaque pouce, les mêmes au milieu, les roulements et l'harmonique" width="1200" height="470" loading="lazy"></a>
+    <a class="map en" href="img/keys-en.png" target="_blank" rel="noopener"><img class="map" src="img/keys-en.png" alt="The FM-1's keys: the drum's tongues under each thumb, the same in the middle, the rolls and the harmonic" width="1200" height="470" loading="lazy"></a>
+    <dl class="ctl">
+      <dt><span class="fr">Les touches</span><span class="en">The keys</span></dt><dd><span class="fr">Les lames du tambour, sous chaque pouce ; au milieu, les mêmes lames encore une fois.</span><span class="en">The drum's tongues, under each thumb; in the middle, the same tongues once more.</span></dd>
+      <dt>OP3 · MONO</dt><dd><span class="fr">Les roulements sur la dernière lame jouée : vite puis lent, lent puis vite. Un appui : le geste entier ; maintenu : il continue. Leurs touches restent allumées.</span><span class="en">The rolls on the last tongue played: fast then slow, slow then fast. A tap: the whole gesture; held: it goes on. Their keys stay lit.</span></dd>
+      <dt>POLY</dt><dd><span class="fr">L'harmonique : la lame touchée en son milieu, l'octave chante. Maintenu, ou un appui pour qu'il reste.</span><span class="en">The harmonic: the tongue touched in its middle, the octave sings. Held, or a tap to keep it.</span></dd>
+      <dt>PRESETS · ALGORITHM</dt><dd><span class="fr">La gamme (majeur, pentatonique, mineur, Akebono, dorien, Hijaz ; en do, ou dans la tonalité choisie dans GLO) · la matière (acier, grand tambour grave, verre, bois).</span><span class="en">The scale (major, pentatonic, minor, Akebono, Dorian, Hijaz; in C, or in the key set in GLO) · the material (steel, low drum, glass, wood).</span></dd>
+      <dt>SELECT</dt><dd><span class="fr">Le jour et la nuit.</span><span class="en">Day and night.</span></dd>
+      <dt>K1 · K2 · K3</dt><dd><span class="fr">La frappe (douce ou dure) · la résonance (au milieu : la durée du vrai tambour) · les rebonds au bord du bassin. Le son est sec, sans écho ni réverbe, comme le vrai.</span><span class="en">The strike (soft or hard) · the resonance (in the middle: the real drum's length) · the bounces at the pond's edge. The sound is dry, no echo, no reverb, like the real one.</span></dd>
+      <dt>ARP</dt><dd><span class="fr">La pluie : un appui la lance ou l'arrête.</span><span class="en">The rain: a tap starts or stops it.</span></dd>
+      <dt>REC · PLAY · SEQ · OCT</dt><dd><span class="fr">Le magnéto et le carnet, comme dans Modular One. OCT- et OCT+ seuls : l'octave.</span><span class="en">The tape and the sketchbook, as in Modular One. OCT- and OCT+ alone: the octave.</span></dd>
+      <dt>SAVE · SEL · GLO</dt><dd><span class="fr">Garde ton tambour (maintenu 2 s : celui d'origine) · nourrit les carpes · les réglages.</span><span class="en">Keeps your drum (held 2 s: the original) · feeds the koi · the settings.</span></dd>
+      <dt>MASTER</dt><dd><span class="fr">Le volume.</span><span class="en">The volume.</span></dd>
+    </dl>
+  </section>
+
+  <section>
+    <h2 class="px"><span class="fr">L'installer</span><span class="en">Install it</span></h2>
+    <ol class="steps"><li><span class="fr">Ouvre la page d'installation dans Chrome ou Edge, sur ton ordinateur.</span><span class="en">Open the install page in Chrome or Edge, on your computer.</span></li><li><span class="fr">Branche le FM-1 en USB, directement, sans hub.</span><span class="en">Connect the FM-1 by USB, directly, no hub.</span></li><li><span class="fr">Clique Installer : la page lit d'abord ce qu'il y a sur ton FM-1 et sa version, puis te demande de confirmer. Environ deux minutes, sans rien débrancher.</span><span class="en">Click Install: the page first reads what is on your FM-1 and its version, then asks you to confirm. About two minutes, unplugging nothing.</span></li></ol>
+    <div class="after"><a class="btn" href="install/" target="_blank" rel="noopener"><span class="fr">Installer</span><span class="en">Install</span></a><span class="note" style="margin:0"><span class="fr">La page refuse un appareil qui n'est pas un FM-1 : rien n'est écrit dessus.</span><span class="en">The page refuses a device that is not an FM-1: nothing is written to it.</span></span></div>
+  </section>
+
+  <section class="faq">
+    <h2 class="px">Questions</h2>
+    <details><summary><span class="fr">C'est gratuit ?</span><span class="en">Is it free?</span></summary><p><span class="fr">Oui. Modular Koi est un logiciel libre (GPL-3.0) : le code est sur GitHub, tu peux le lire, le modifier et le partager.</span><span class="en">Yes. Modular Koi is free software (GPL-3.0): the code is on GitHub, you can read it, change it and share it.</span></p></details>
+    <details><summary><span class="fr">J'ai déjà Modular One. Je peux passer à Modular Koi ?</span><span class="en">I already have Modular One. Can I switch to Modular Koi?</span></summary><p><span class="fr">Oui, et revenir quand tu veux : chaque page d'installation dit ce qu'il y a sur ton FM-1 avant d'écrire. Tes croquis et tes morceaux sont gardés au même endroit par les deux : tu les retrouves en changeant.</span><span class="en">Yes, and come back whenever you like: each install page says what is on your FM-1 before writing. Both keep your sketches and songs in the same place: you find them again when you switch.</span></p></details>
+    <details><summary><span class="fr">Je peux revenir au firmware M-VAVE ?</span><span class="en">Can I go back to the M-VAVE firmware?</span></summary><p><span class="fr">Oui, avec l'outil de mise à jour officiel de M-VAVE et le firmware du FM-1 (site M-VAVE, rubrique Downloads).</span><span class="en">Yes, with M-VAVE's official updater and the FM-1 firmware (M-VAVE website, Downloads).</span></p></details>
+    <details><summary><span class="fr">Et mes presets actuels ?</span><span class="en">What about my current presets?</span></summary><p><span class="fr">Les presets du firmware d'origine sont perdus à l'installation. Pense-y si tu y tiens.</span><span class="en">The original firmware's presets are lost when installing. Keep that in mind.</span></p></details>
+    <details><summary><span class="fr">Il est en do ? Je peux changer de tonalité ?</span><span class="en">Is it in C? Can I change the key?</span></summary><p><span class="fr">Il est en do, comme le tambour de l'auteur. Dans GLO, la ligne KEY le met dans n'importe quelle tonalité, de do à si : toutes les lames montent ensemble, et le nom de la gamme suit (« D MAJOR »).</span><span class="en">It is in C, like the author's drum. In GLO, the KEY line puts it in any key from C to B: all the tongues move up together, and the scale's name follows ("D MAJOR").</span></p></details>
+    <details><summary><span class="fr">Je peux le jouer depuis un clavier MIDI ?</span><span class="en">Can I play it from a MIDI keyboard?</span></summary><p><span class="fr">Oui, par l'USB ou l'entrée MIDI, sur le canal choisi dans GLO. Les notes jouent les lames du tambour.</span><span class="en">Yes, over USB or the MIDI input, on the channel set in GLO. The notes play the drum's tongues.</span></p></details>
+    <details><summary><span class="fr">Ça marche sur Mac, Windows, iPad ?</span><span class="en">Mac, Windows, iPad?</span></summary><p><span class="fr">Sur Mac, Windows et Linux, dans Chrome ou Edge. Pas dans Safari ni Firefox, et pas sur iPhone ou iPad : ils n'ont pas le MIDI web.</span><span class="en">Mac, Windows and Linux, in Chrome or Edge. Not Safari or Firefox, and not on iPhone or iPad: they have no Web MIDI.</span></p></details>
+    <details><summary><span class="fr">Mon FM-1 est un modèle récent, ça marche ?</span><span class="en">My FM-1 is a recent one, does it work?</span></summary><p><span class="fr">Oui. Les FM-1 vendus depuis fin 2026 (le logo imprimé sur la façade) ont une autre puce de mémoire, et Modular Koi la connaît : tes croquis et tes réglages sont gardés comme sur les premiers.</span><span class="en">Yes. FM-1s sold from late 2026 (the logo printed on the front) have another memory chip, and Modular Koi knows it: your sketches and settings are kept as on the first ones.</span></p></details>
+    <details><summary><span class="fr">C'est risqué ?</span><span class="en">Is it risky?</span></summary><p><span class="fr">C'est une bêta non officielle, testée sur le FM-1 de l'auteur. Une installation interrompue se reprend en recliquant sur Installer. Si un FM-1 ne démarre plus, l'outil de secours est FM-1-transporter.</span><span class="en">It is an unofficial beta, tested on the author's FM-1. An interrupted install resumes by clicking Install again. If an FM-1 no longer starts, the recovery tool is FM-1-transporter.</span></p></details>
+  </section>
+
+  <p class="foot"><span class="fr">Basé sur</span><span class="en">Based on</span> <a href="https://github.com/hugelton/Felucca" target="_blank" rel="noopener">Felucca</a> by Leo Kuroshita (@kurogedelic), <a href="https://hugelton.com" target="_blank" rel="noopener">Hügelton Instruments</a>. <span class="fr">Merci à lui du fond du cœur.</span><span class="en">Heartfelt thanks to him.</span> <span class="fr">Police : Silkscreen (SIL OFL 1.1).</span><span class="en">Font: Silkscreen (SIL OFL 1.1).</span><br>
+    <span class="fr">Logiciel libre GPL-3.0, sans garantie. Code source :</span><span class="en">Free software, GPL-3.0, no warranty. Source:</span> <a href="https://github.com/bunglesociety/modular-koi" target="_blank" rel="noopener">github.com/bunglesociety/modular-koi</a>. <span class="fr">M-VAVE et FM-1 sont des marques de leurs propriétaires. Modular Koi n'est ni fait ni soutenu par M-VAVE ou Hügelton Instruments.</span><span class="en">M-VAVE and FM-1 are trademarks of their respective owners. Modular Koi is not made or supported by M-VAVE or Hügelton Instruments.</span></p>
+</div>
+</body>
+</html>

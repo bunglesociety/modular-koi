@@ -16,7 +16,10 @@
  * ID: 0xeb6014"). The driver uses only generic SPI NOR commands (9F, 05/35, 06, 20, 02, 0B). */
 #define FL_JEDEC_OK(id) ((id) == 0xEB6014u || (id) == 0x856014u)
 #else
-#define FL_JEDEC_OK(id) ((id) == 0x856014u)
+/* FM-1: Puya P25Q80 0x856014 (the first units), UC25HQ80 0xB36014 (units sold from late 2026, the logo printed on
+ * the front). Same size, same generic commands; upstream Felucca f4cbb6a (#320) accepts both too. Without it a newer
+ * FM-1 stays RAM-only: nothing saved, and no update (ota_session needs flash_ok). */
+#define FL_JEDEC_OK(id) ((id) == 0x856014u || (id) == 0xB36014u)
 #endif
 
 #if BOARD_SMK37

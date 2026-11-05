@@ -43,6 +43,9 @@ static struct {
     uint32_t snow_t, rnd;
     uint8_t full;                                 /* the whole room to draw */
     uint32_t cap_sig;
+    uint32_t beat;                                /* DANSE: the beat its step was taken on */
+    uint8_t away;                                 /* (the FM-1's tape plays: he is off the screen, but passing) */
+    uint32_t next_pass;
 } cat = {.night = -1, .winter = -1, .rnd = 0x2545F491u, .full = 1, .cap_sig = 0xFFFFFFFFu};
 
 static struct { uint8_t x, y, dx; } snow[32];
@@ -173,7 +176,7 @@ static struct {
     char lab[20], val[20], head[24];
     const char *snd;
     int16_t bar;                                  /* 0..127, -1 none */
-    uint8_t show;
+    uint8_t show, page;                           /* page: the FM-1's page, its four knobs under its name */
 } cap;
 
 /* the opening (5 s, a note or a touch skips it): BUNGLE SOCIETY comes down from the top to the middle, as on the
@@ -196,13 +199,22 @@ static int m1_caption(void)
 {
     uint32_t sig;
     cap.lab[0] = cap.val[0] = cap.head[0] = 0;
+    cap.page = 0;
     cap.bar = -1;
     cap.snd = N_VILLE_MODE[M1T->p[P_E0] % VM_N];
     cap.show = m1.touched != M1T_NONE && fm1_ms - m1.t_ms < 2500u;
     if (cap.show) {
         switch (m1.touched) {
-        case M1T_PAD: str_cpy(cap.lab, cap.snd, sizeof cap.lab); break;   /* the sound picked, a moment */
-        case M1T_KNOB: str_cpy(cap.lab, M1_K_NAME[m1.what % M1_NK], sizeof cap.lab); cap.bar = m1.value; break;
+        case M1T_PAD:                                                        /* the sound picked, a moment */
+            str_cpy(cap.lab, cap.snd, sizeof cap.lab);
+            if (m1.value)
+                str_cpy(cap.val, "SAVED", sizeof cap.val);                   /* (the FM-1: yours, SAVE) */
+            break;
+        case M1T_KNOB: str_cpy(cap.lab, m1_knob_name(m1.what), sizeof cap.lab); cap.bar = m1.value; break;
+        case M1T_PAGE:                                                       /* (the FM-1: a page, its knobs) */
+            str_cpy(cap.lab, m1_page_name(m1.what), sizeof cap.lab);
+            cap.page = 1;
+            break;
         case M1T_FADER:
             str_cpy(cap.lab, m1.what == 1u && VM_TOWN((uint32_t)M1T->p[P_E0]) ? "RISE" : M1_F_NAME[m1.what & 3u],
                     sizeof cap.lab);
@@ -234,7 +246,8 @@ static int m1_caption(void)
     if (cap.bar >= 0 && !cap.val[0])                                         /* the number, as Modular One shows it */
         fmt_int(cap.val, cap.bar);
     sig = m1_hash(m1_hash(m1_hash(m1_hash(2166136261u, cap.lab), cap.val), cap.head), cap.snd) ^
-          (uint32_t)(cap.bar + 1) ^ ((uint32_t)m1.pad << 24) ^ (cap.show ? 0x40000000u : 0u);
+          (uint32_t)(cap.bar + 1) ^ ((uint32_t)m1.pad << 24) ^ (cap.show ? 0x40000000u : 0u) ^
+          (cap.page ? 0x20000000u ^ (uint32_t)m1.what << 16 : 0u);
     if (sig == cat.cap_sig)
         return 0;
     cat.cap_sig = sig;
@@ -329,6 +342,104 @@ static inline int room_grain(uint32_t x, uint32_t y)
     return (h * 0x5bd1e995u >> 28) < 3u;                                     /* ~ 3 in 16 */
 }
 
+#ifdef M1_TAPE
+/* ------------------------------------------------------------ the tape: while it plays, the deck fills the screen,
+ * drawn in the room's cells (as the companion: the same grain, the same ink); now and then he passes in front */
+#define DK_LX 22                                 /* the reels' centres (cells), their flanges' radius */
+#define DK_RX 58
+#define DK_Y 41
+#define DK_R 15
+enum { DK_BG, DK_INK, DK_FACE, DK_TAPE, DK_N };
+static struct { int32_t t[2]; int32_t cx[2][3], sy[2][3]; } dk;
+static int dk_on(void) { return demo_on && !spl.on; }
+
+/* the reels' spokes and the tape wound on each, for the picture being drawn */
+static void dk_setup(void)
+{
+    const pl_item_t *it = &pl_item[pl_idx % PL_MAX];
+    uint32_t el = demo_pos / 441u, dur = it->dur10, p = dur ? (el >= dur ? 1000u : el * 1000u / dur) : 0u, r, k;
+    uint32_t ang = demo_pos * 1715u;                                         /* (a turn every ~2.5 s) */
+    dk.t[0] = 5 + (int32_t)((1000u - p) * 8u / 1000u);                     /* the tape goes from the left reel .. */
+    dk.t[1] = 5 + (int32_t)(p * 8u / 1000u);                                /* .. to the right one */
+    for (r = 0; r < 2u; r++)
+        for (k = 0; k < 3u; k++) {
+            uint32_t a = ang + r * 0x2AAAAAAAu + k * 0x55555555u;
+            dk.cx[r][k] = sine_i(a + 0x40000000u) >> 7;                     /* (Q8) */
+            dk.sy[r][k] = sine_i(a) >> 7;
+        }
+}
+/* x of the line (x0, y0) .. (x1, y1) at row y (y0 < y1) */
+static int dk_on_line(int32_t x, int32_t y, int32_t x0, int32_t y0, int32_t x1, int32_t y1)
+{
+    int32_t xl;
+    if (y < y0 || y > y1)
+        return 0;
+    xl = x0 + ((x1 - x0) * (y - y0) * 2 + (y1 - y0)) / (2 * (y1 - y0));
+    return x == xl || (y == y1 && (x - xl) * (x - xl) <= 1);
+}
+static uint32_t dk_cell(int32_t x, int32_t y)
+{
+    uint32_t r;
+    for (r = 0; r < 2u; r++) {                                               /* the reels */
+        int32_t dx = x - (r ? DK_RX : DK_LX), dy = y - DK_Y, d2 = dx * dx + dy * dy, k;
+        if (d2 > (DK_R + 1) * (DK_R + 1))
+            continue;
+        if (d2 > DK_R * DK_R - 4)
+            return DK_INK;                                                   /* the flange's rim */
+        if (d2 <= 4)
+            return DK_FACE;                                                  /* the hub */
+        if (d2 <= 9)
+            return DK_INK;
+        for (k = 0; k < 3; k++) {                                            /* its three spokes, turning */
+            int32_t al = dx * dk.cx[r][k] + dy * dk.sy[r][k], pe = dx * dk.sy[r][k] - dy * dk.cx[r][k];
+            if (al > 0 && pe < 150 && pe > -150 && d2 < (DK_R - 2) * (DK_R - 2))
+                return DK_INK;
+        }
+        return d2 <= dk.t[r] * dk.t[r] ? DK_TAPE : DK_FACE;
+    }
+    if (dk_on_line(x, y, DK_LX - dk.t[0], DK_Y, 7, 64) || dk_on_line(x, y, DK_RX + dk.t[1], DK_Y, 73, 64))
+        return DK_INK;                                                       /* the tape: down to the rollers, */
+    if (y == 66 && x >= 7 && x <= 73)
+        return DK_INK;                                                       /* .. across under the head */
+    {
+        int32_t a = (x - 7) * (x - 7) + (y - 65) * (y - 65), b = (x - 73) * (x - 73) + (y - 65) * (y - 65);
+        if (a <= 5 || b <= 5)
+            return a <= 1 || b <= 1 ? DK_FACE : DK_INK;                     /* the rollers */
+    }
+    if (y >= 62 && y <= 65 && x >= 35 && x <= 45)
+        return y == 62 || x == 35 || x == 45 ? DK_INK : DK_FACE;            /* the head */
+    return DK_BG;
+}
+static void pl_time(char *b, uint32_t d10)
+{
+    uint32_t sec = d10 / 100u, k = 0;
+    if (sec >= 600u)
+        b[k++] = (char)('0' + sec / 600u % 10u);
+    b[k++] = (char)('0' + sec / 60u % 10u);
+    b[k++] = ':';
+    b[k++] = (char)('0' + sec % 60u / 10u);
+    b[k++] = (char)('0' + sec % 10u);
+    b[k] = 0;
+}
+/* the piece's name, its time, its place, at the top */
+static void dk_words(uint16_t *buf, uint32_t bh, int32_t oy, uint16_t ink, uint16_t acc)
+{
+    const pl_item_t *it = &pl_item[pl_idx % PL_MAX];
+    char b[24], c[12];
+    pf_draw_s(buf, 240u, bh, 12, 10 + oy, it->name, ink, pf_fit(it->name, 216, 4));
+    pl_time(b, demo_pos / 441u);
+    str_cpy(b + str_len(b), " / ", 4);
+    pl_time(c, it->dur10);
+    str_cpy(b + str_len(b), c, 8);
+    pf_draw_s(buf, 240u, bh, 12, 44 + oy, b, acc, 2);
+    fmt_int(b, (int32_t)pl_idx + 1);
+    str_cpy(b + str_len(b), " OF ", 5);
+    fmt_int(c, (int32_t)pl_count);
+    str_cpy(b + str_len(b), c, 8);
+    pf_draw_s(buf, 240u, bh, 228 - pf_width(b), 44 + oy, b, ink, 2);
+}
+#endif
+
 /* grid rows gy0 .. gy1-1 to the LCD (3 screen rows each), through the canvas, 41 grid rows at a time */
 static void scene_rows(uint32_t gy0, uint32_t gy1)
 {
@@ -352,6 +463,23 @@ static void scene_rows(uint32_t gy0, uint32_t gy1)
         nflakes = 32u;
     for (i = 0; i < 16u; i++)
         pal[i] = swap16(CAT_PAL[i]);
+#ifdef M1_TAPE
+    uint16_t dkc[DK_N];
+    int deck = dk_on();
+    if (deck) {                                                              /* the deck's colours: the room's */
+        uint16_t wall = room_col(RC_WALL, w, n);
+        dk_setup();
+        dkc[DK_BG] = rc[RC_WALL][0];
+        dkc[DK_INK] = ink;
+        dkc[DK_FACE] = swap16(m1_mix(wall, M1_RGB(0xff, 0xf6, 0xe4), 30));
+        dkc[DK_TAPE] = swap16(n > 64 ? M1_RGB(0x8a, 0x6a, 0x4a) : M1_RGB(0x4a, 0x30, 0x20));
+        nflakes = 0;
+        star = 0;
+    }
+#else
+    const int deck = 0;
+    (void)deck;
+#endif
     while (gy0 < gy1) {
         uint32_t nr = gy1 - gy0, r, sy0 = gy0 * 3u;
         if (nr > 41u)
@@ -367,6 +495,16 @@ static void scene_rows(uint32_t gy0, uint32_t gy1)
                 e = e < ey ? e : ey;
                 lv = 0;                                                      /* (no frame: the screen's edge is his) */
                 (void)e;
+#ifdef M1_TAPE
+                if (deck) {                                                  /* the tape's deck, he in front of it */
+                    uint32_t d = dk_cell((int32_t)gx, (int32_t)gy);
+                    v = d == DK_BG ? rc[room_grain(gx, gy) ? RC_GRAIN : RC_WALL][0] : dkc[d];
+                    if (c[gx])
+                        v = pal[c[gx]];
+                    row[gx * 3u] = row[gx * 3u + 1u] = row[gx * 3u + 2u] = v;
+                    continue;
+                }
+#endif
                 kind = PET->water ? (gy >= ROOM_G - 26u ? sand_kind(gx, gy) : RC_WALL)
                                   : gy >= ROOM_G - 11u ? grass_kind(gx, gy) : RC_WALL;
                 if (kind == RC_WALL)
@@ -395,7 +533,19 @@ static void scene_rows(uint32_t gy0, uint32_t gy1)
         } else if (gy0 < CAP_GY) {                                           /* the words, at the top */
             int32_t oy = -(int32_t)sy0;
             uint32_t bh = nr * 3u;
-            if (cap.show && cap.val[0]) {                                   /* the name, the value under it, bigger */
+            if (cap.show && cap.page) {                                      /* a page: its name, its knobs under it, */
+                uint32_t k;                                                  /* two by two, as on the panel */
+                pf_draw_s(cv_px, 240u, bh, 12, 8 + oy, cap.lab, ink, pf_fit(cap.lab, 216, 4));
+                for (k = 0; k < 4u; k++) {
+                    const char *n = m1_page_knob(m1.what, k);
+                    char b[16] = {(char)('1' + k), ' ', 0};
+                    if (!n[0])
+                        continue;
+                    str_cpy(b + 2, n, sizeof b - 2);
+                    pf_draw_s(cv_px, 240u, bh, 12 + (int32_t)(k & 1u) * 114, 42 + (int32_t)(k >> 1) * 16 + oy, b, acc,
+                              pf_fit(b, 108, 2));
+                }
+            } else if (cap.show && cap.val[0]) {                                   /* the name, the value under it, bigger */
                 int32_t s1 = pf_fit(cap.lab, 216, 4), s2 = pf_fit(cap.val, 216, 6);
                 pf_draw_s(cv_px, 240u, bh, 12, 14 + oy, cap.lab, ink, s1);
                 pf_draw_s(cv_px, 240u, bh, 12, 42 + oy, cap.val, acc, s2);
@@ -403,6 +553,11 @@ static void scene_rows(uint32_t gy0, uint32_t gy1)
                 int32_t s1 = pf_fit(cap.lab, 216, 6);
                 pf_draw_s(cv_px, 240u, bh, 12, 26 + oy, cap.lab, ink, s1);
             }
+#ifdef M1_TAPE
+            else if (deck) {                                                 /* the tape plays: its piece, its time */
+                dk_words(cv_px, bh, oy, ink, acc);
+            }
+#endif
         }
         lcd_blit(0, sy0, 240u, nr * 3u, cv_px);
         gy0 += nr;
@@ -437,13 +592,63 @@ static const uint8_t CAT_NIGHT_LIFE[] = {CAT_ENDORT, CAT_PETRIR, CAT_BAILLEMENT,
 
 static int cat_night(void) { return cat.night > 80; }   /* (fader 1 in its lowest third) */
 
+static int cat_sel(uint32_t c) { return c == CAT_CALIN || c == CAT_JOUER || c == CAT_CACHE || c == CAT_CADEAU; }
+
 static void cat_think(void)
 {
     uint32_t now = fm1_ms, c = cat.clip;
+#ifdef M1_TAPE
+    int playing = (m1.notes_ms && now - m1.notes_ms < 1200u) || demo_on;   /* (the tape too: he listens) */
+#else
     int playing = m1.notes_ms && now - m1.notes_ms < 1200u;
+#endif
     int touched = m1.touched != M1T_NONE && now - m1.t_ms < 1500u;
     if (playing || touched)
         cat.quiet_since = now;
+    if (m1.calin) {                                                          /* SEL (the FM-1): you, with him, if he is awake */
+        m1.calin = 0;
+        if (!(c == CAT_SLEEP || c == CAT_ENDORT || c == CAT_WAKE || (c == CAT_PETRIR && cat_night())) && !cat_sel(c)) {
+            /* a few cuddles, then he wants to play, then he hides and comes running back; now and then a present */
+            static const uint8_t SEL_NEXT[8] = {CAT_CALIN, CAT_CALIN, CAT_JOUER, CAT_CALIN, CAT_CACHE, CAT_CALIN, CAT_JOUER,
+                                                CAT_CADEAU};
+            static uint8_t k;
+            uint32_t want = SEL_NEXT[k++ % 8u];
+            if (cat_rand(4) == 0)                                            /* (not quite always the same order) */
+                want = SEL_NEXT[cat_rand(8)];
+            cat_play(want);
+            cat.quiet_since = now;
+            cat.away = 0;
+            return;
+        }
+    }
+#ifdef M1_TAPE
+    if (dk_on()) {                                                           /* the tape: the deck fills the screen; */
+        if (c == CAT_PASSE || cat_sel(c))                                    /* now and then he passes in front */
+            return;
+        if (!cat.away) {
+            cat.away = 1;
+            cat.box[3] = 0;
+            memset(cat_buf, 0, sizeof cat_buf);
+            cat.full = 1;
+            cat.next_pass = now + 9000u + cat_rand(8000u);
+            return;
+        }
+        if ((int32_t)(now - cat.next_pass) >= 0) {
+            cat.next_pass = now + 25000u + cat_rand(20000u);
+            if (!cat_night() && M1G[M1G_CAT] % 3u != 2u) {                   /* (QUIET: he lets you listen) */
+                cat.away = 0;
+                cat_play(CAT_PASSE);
+            }
+        }
+        return;
+    }
+    if (cat.away) {                                                          /* the tape stopped: he is back */
+        cat.away = 0;
+        cat.full = 1;
+        cat_play(cat_night() ? CAT_SLEEP : CAT_IDLE);
+        return;
+    }
+#endif
     if (c == CAT_SLEEP || c == CAT_ENDORT || (c == CAT_PETRIR && cat_night())) {   /* asleep: only the day wakes him */
         if (cat.night < 48) {
             cat_play(CAT_WAKE);
@@ -453,12 +658,21 @@ static void cat_think(void)
     }
     if (c == CAT_WAKE)
         return;                                                              /* (he gets up first) */
+    if (m1.dancing && !cat_night() && !cat_sel(c)) {                      /* the ARP or the loop plays: he dances */
+        if (c != CAT_DANSE)
+            cat_play(CAT_DANSE);
+        return;
+    }
+    if (c == CAT_DANSE) {                                                    /* the music stopped */
+        cat_play(playing ? CAT_PLAY : CAT_IDLE);
+        return;
+    }
     if (cat_night()) {                                                       /* night: he falls asleep, music or not */
         if (!cat.behaving || c == CAT_IDLE)
             cat_play(cat_rand(4) ? CAT_ENDORT : CAT_PETRIR);                 /* (PETRIR ends asleep at night) */
         return;
     }
-    if (playing) {
+    if (playing && !cat_sel(c)) {
         if (c != CAT_PLAY)
             cat_play(CAT_PLAY);                                              /* the music stops his business too */
         return;
@@ -496,13 +710,20 @@ static void cat_think(void)
 /* the next step of the clip when its time comes: decoded, and its rows drawn */
 static void cat_tick(void)
 {
+    if (cat.away)
+        return;
     const cat_clip_t *cl = &CAT_CLIPS[cat.clip];
     const cat_step_t *s;
     const cat_frame_t *f;
     uint32_t now = fm1_ms;
     if (cat.t_next) {                                                        /* (0: the clip's first frame, now) */
-        if ((int32_t)(now - cat.t_next) < 0)
+        if (cat.clip == CAT_DANSE) {                                         /* DANSE: a step a beat, not a clock */
+            if (cat.beat == m1.beat)
+                return;
+            cat.beat = m1.beat;
+        } else if ((int32_t)(now - cat.t_next) < 0) {
             return;
+        }
         if (cat.step + 1u < cl->n) {
             cat.step++;
         } else if (cl->loop) {
@@ -546,11 +767,12 @@ static void g1_strip(uint32_t y, uint32_t h, uint16_t bg)
 
 static void m1_globe_row(uint32_t r)
 {
-    char b[12], k[3] = {'K', (char)('2' + r), 0};
+    char b[12], k[4];
     const uint8_t *rgb = M1_PAD_RGB[m1.pad];
     uint16_t acc = m1_mix(M1_RGB(rgb[0], rgb[1], rgb[2]), G1_INK, 25);
-    int hot = m1.grow == r && fm1_ms - m1.grow_ms < 3000u;
+    int hot = g1_hot(r);
     const char *v = g1_vname(r, b);
+    g1_klab(r, k);
     g1_strip(38u + r * 24u, 24u, hot ? G1_HOT : G1_BG);
     pf_draw(cv_px, 240u, 24u, 10, 7, k, swap16(hot ? acc : G1_DIM));
     pf_draw(cv_px, 240u, 24u, 42, 7, G1_NAME[r], swap16(hot ? G1_INK : m1_mix(G1_INK, G1_BG, 20)));
@@ -569,17 +791,66 @@ static void m1_globe_draw(int all)
         pf_draw(cv_px, 240u, 36u, 10, 14, "SETTINGS", swap16(G1_INK));
         cv_blit(0, 2);
         g1_strip(208u, 30u, G1_BG);
-        pf_draw(cv_px, 240u, 30u, 10, 10, "GLOBE: BACK", swap16(G1_DIM));
+        pf_draw(cv_px, 240u, 30u, 10, 10, G1_FOOT, swap16(G1_DIM));
         cv_blit(0, 208);
     }
     for (r = 0; r < G1_N; r++) {
-        uint32_t v = g1_get(r) | (m1.grow == r && fm1_ms - m1.grow_ms < 3000u ? 0x100u : 0u) | (uint32_t)m1.pad << 12;
+        uint32_t v = g1_get(r) | (g1_hot(r) ? 0x100u : 0u) | (uint32_t)m1.pad << 12;
         if (all || v != sig[r]) {
             sig[r] = v;
             m1_globe_row(r);
         }
     }
 }
+
+#ifdef M1_TAPE
+/* ------------------------------------------------------------ the tape's list (SEQ held): the same wood as GLO */
+static void m1_list_row(uint32_t row, uint32_t k)
+{
+    const uint8_t *rgb = M1_PAD_RGB[m1.pad];
+    uint16_t acc = m1_mix(M1_RGB(rgb[0], rgb[1], rgb[2]), G1_INK, 25);
+    int hot = k == pl_cursor, del = pl_del == k + 1u, playing = demo_on && k == pl_idx;
+    char b[12];
+    g1_strip(38u + row * 24u, 24u, hot ? G1_HOT : G1_BG);
+    if (k < pl_count) {
+        pf_draw(cv_px, 240u, 24u, 10, 7, playing ? ">" : k < pl_songs ? "*" : " ", swap16(hot ? acc : G1_DIM));
+        pf_draw(cv_px, 240u, 24u, 26, 7, del ? "ERASE? REC" : pl_item[k].name,
+                swap16(del ? acc : hot ? G1_INK : m1_mix(G1_INK, G1_BG, 20)));
+        if (!del) {
+            pl_time(b, pl_item[k].dur10);
+            pf_draw(cv_px, 240u, 24u, 230 - pf_width(b), 7, b, swap16(hot ? acc : G1_DIM));
+        }
+    }
+    cv_blit(0, 38u + row * 24u);
+}
+static void m1_list_draw(int all)
+{
+    static uint32_t sig;
+    uint32_t first = pl_cursor > 3u ? pl_cursor - 3u : 0u, row, v;
+    char b[16], c[8];
+    if (pl_count > 7u && first + 7u > pl_count)
+        first = pl_count - 7u;
+    v = first | (uint32_t)pl_cursor << 8 | (uint32_t)pl_del << 16 | ((uint32_t)pl_count << 24 ^ (demo_on ? (uint32_t)pl_idx << 4 : 0u));
+    if (!all && v == sig)
+        return;
+    sig = v;
+    if (all) {
+        lcd_fill(0, 0, 240, 240, G1_BG);
+        g1_strip(208u, 30u, G1_BG);
+        pf_draw(cv_px, 240u, 30u, 10, 10, "K1 CHOOSE  REC ERASE", swap16(G1_DIM));
+        cv_blit(0, 208);
+    }
+    g1_strip(2u, 36u, G1_BG);
+    pf_draw(cv_px, 240u, 36u, 10, 14, "TAPE", swap16(G1_INK));
+    fmt_int(b, (int32_t)pl_count);
+    str_cpy(b + str_len(b), pl_count == 1u ? " PIECE" : " PIECES", 8);
+    (void)c;
+    pf_draw(cv_px, 240u, 36u, 230 - pf_width(b), 14, pl_count ? b : "EMPTY", swap16(G1_DIM));
+    cv_blit(0, 2);
+    for (row = 0; row < 7u; row++)
+        m1_list_row(row, first + row);
+}
+#endif
 
 /* ------------------------------------------------------------ the screen asleep (GLOBE VEILLE ECRAN) */
 static struct { uint8_t st; uint32_t t; } m1_scr;                            /* 0 on, 1 off, 2 waking (SLPOUT sent) */
@@ -622,8 +893,17 @@ static void m1_draw(void)
     int wake = m1_screen_awake();
     if (!wake)
         return;
+#ifdef M1_TAPE
+    if (m1.list) {                                                           /* (the same as GLO: a page of its own) */
+        m1_list_draw(globe != 2u || wake == 2);
+        globe = 2;
+        if (wake == 2)
+            lcd_power(2);
+        return;
+    }
+#endif
     if (m1.globe) {
-        m1_globe_draw(!globe || wake == 2);
+        m1_globe_draw(globe != 1u || wake == 2);
         globe = 1;
         if (wake == 2)
             lcd_power(2);
@@ -694,6 +974,16 @@ static void m1_draw(void)
         cat_play(cat_night() ? CAT_SLEEP : CAT_WAKE);
     }
     cat_think();
+#ifdef M1_TAPE
+    {
+        static uint8_t dk_was;
+        if (dk_was != demo_on) {                                             /* the tape starts or stops: all again */
+            dk_was = demo_on;
+            cat.cap_sig = 0xFFFFFFFFu;
+            cat.full = 1;
+        }
+    }
+#endif
     {
         int words = m1_caption();
         cat_tick();
@@ -703,6 +993,15 @@ static void m1_draw(void)
         } else if (words) {
             scene_rows(0, CAP_GY);
         }
+#ifdef M1_TAPE
+        else if (dk_on()) {                                                  /* the reels turn: ~8 pictures a second */
+            static uint32_t dk_ms;
+            if (now - dk_ms >= 120u) {
+                dk_ms = now;
+                scene_rows(0, ROOM_G);
+            }
+        }
+#endif
     }
     if (wake == 2)
         lcd_power(2);                                                        /* DISPON: the picture is there */

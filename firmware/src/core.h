@@ -20,6 +20,10 @@
 #define MODULAR_ONE BOARD_SMK37  /* Modular One on the SMK-37: the VILLE engine (eng_ville.c) as engine 13, its own
                                   * screen and controls (m1_*.c); the FM-1 build of this tree stays Felucca */
 #endif
+#ifndef MODULAR_KOI
+#define MODULAR_KOI 0            /* Modular Koi on the FM-1 (with MODULAR_ONE): engine 13 is the tongue drum (eng_koi.c), its own
+                                  * controls and screen (koi_*.c) */
+#endif
 #ifndef FELUCCA_SLICE
 #define FELUCCA_SLICE (!MODULAR_ONE)   /* the SLICE engine (eng_slice.c), engine 13; FELUCCA_SLICE=0 builds without it */
 #endif

@@ -190,6 +190,23 @@ def dirt(c, x, y, t):
     return c
 
 
+def stick(c, x, y, k="N"):
+    """a little stick on the floor (cells), its middle at x, y"""
+    pts = [(x + i, y - i // 4) for i in range(-6, 7)] + [(x + 2, y - 2), (x + 3, y - 3)]
+    for p in pts: c.m[p] = k
+    for (px, py) in pts:
+        for dx, dy in ((0, -1), (0, 1), (-1, 0), (1, 0)): c.m.setdefault((px + dx, py + dy), "o")
+    return c
+
+
+def pearl(c, x, y):
+    """a pearl on the sand (cells)"""
+    for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)): c.m[(x + dx, y + dy)] = "H"
+    for dx, dy in ((-1, 0), (-1, 1), (2, 0), (2, 1), (0, -1), (1, -1), (0, 2), (1, 2)): c.m.setdefault((x + dx, y + dy), "o")
+    c.m[(x, y)] = "H"; c.m[(x + 1, y + 1)] = "W"
+    return c
+
+
 def fox_clips():
     S, side = fox_sit, fox_side
     cl = {}
@@ -248,6 +265,44 @@ def fox_clips():
     cl["FOLIE"] = (fr, 0)
     fr = [(S("open"), 110)] * 6 + [(S("squeeze", "o", tilt=-0.08, ear=1), 110)] * 12 + [(S("content", tail=math.sin(i / 3)), 110) for i in range(12)]
     cl["BAILLEMENT"] = (fr, 0)
+    # DANSE (a step a beat, m1_draw.c): he hops from one side to the other, his tail swinging, his ears up
+    fr = []
+    for i in range(8):
+        k = i % 4
+        lean = (-1, 0, 1, 0)[k]
+        c = S("happy", tail=lean * 1.2, tilt=0.22 * lean, ear=1 if k % 2 else 0, cx=38 + 3 * lean, base=62 if k % 2 == 0 else 57)
+        fr.append((gc.notes(c, i // 2) if k == 1 else c, 150))
+    cl["DANSE"] = (fr, 1)
+    # CALIN (SEL): ears back, eyes closed, he leans into the hand, the brush sweeps, hearts rise
+    fr = [(S("happy"), 200)]
+    fr += [(gc.hearts(S("content", tail=math.sin(i / 3), tilt=(0, 0.12, 0.2, 0.12)[(i // 3) % 4], ear=1), 1 + min(i // 5, 3)), 130) for i in range(22)]
+    cl["CALIN"] = (fr + [(S("happy"), 600)], 0)
+    # JOUER (SEL): a ball bounces in; he follows it with his head, pounces on it, sends it off with his nose
+    fr = [(gc.ball(S("wide", look=1, tilt=0.12, ear=1), x, y, "M", "h"), 110) for x, y in ((78, 60), (74, 68), (70, 72), (66, 66), (63, 72))]
+    fr += [(gc.ball(side(44, crouch=k, ear=1), 66, 73), 110) for k in (2, 4, 4)]
+    fr += [(gc.ball(side(52, phase=1, lift=h, tail_up=1.6, ear=1), 68, 73 - h // 2), 90) for h in (8, 12, 6)]
+    fr += [(gc.ball(side(56, crouch=3), x, y), 100) for x, y in ((70, 66), (74, 58), (78, 62), (83, 70))]
+    fr += [(side(56, eyes="happy"), 400)] + [(side(56 - 5 * k, facing=-1, phase=k % 2), 90) for k in range(4)] + [(S("happy"), 500)]
+    cl["JOUER"] = (fr, 0)
+    # CACHE (SEL): off he trots, left; his ears and eyes peek in at the edge; then he bounds back in from the right
+    fr = [(S("open", look=-1), 250)] + [(side(37.5 - 5 * k, phase=k % 2, facing=-1), 80) for k in range(13)] + [(C(), 120)] * 6
+    fr += [(gc.peek(S("open", look=1, tilt=0.2, ear=1), -40), 200), (gc.peek(S("open", look=1, tilt=0.2, ear=1), -37), 600),
+           (gc.peek(S("content", look=1, tilt=0.2), -37), 150), (gc.peek(S("open", look=1, tilt=0.2, ear=1), -37), 500), (C(), 500)]
+    fr += [(side(100 - 5 * k, phase=k % 2, facing=-1, tail_up=1.6), 60) for k in range(13)]
+    fr += [(S("happy", tail=1), 300), (gc.hearts(S("happy", tail=0.5), 2), 700)]
+    cl["CACHE"] = (fr, 0)
+    # CADEAU (SEL): off he trots, right, and comes back to lay a stick at your feet; very proud, his brush sweeping
+    fr = [(S("open", look=1), 250)] + [(side(37.5 + 5 * k, phase=k % 2), 80) for k in range(13)] + [(C(), 120)] * 8
+    fr += [(side(100 - 5 * k, phase=k % 2, facing=-1), 90) for k in range(10)]
+    fr += [(stick(S("happy", look=1), 64, 75), 500), (gc.hearts(stick(S("happy", tail=1), 64, 75), 2), 600),
+           (gc.hearts(stick(S("happy", tail=-1), 64, 75), 3), 600), (stick(S("open", look=1), 64, 75), 500)]
+    cl["CADEAU"] = (fr, 0)
+    # PASSE (the tape plays): he trots in, stops, looks up at the reels, wonders, trots on out (poses he has already)
+    fr = [(side(-25 + 5 * k, phase=k % 2), 110) for k in range(13)] + [(S("open"), 300)]
+    fr += [(S("open", look=-1, tilt=-0.12, ear=1), 120), (S("open", look=-1, tilt=-0.12), 1600),
+           (gc.quest(S("open", look=-1, tilt=-0.12)), 900), (S("open", look=1, tilt=0.12), 1400), (S("happy"), 600)]
+    fr += [(side(37.5 + 5 * k, phase=k % 2), 110) for k in range(13)]
+    cl["PASSE"] = (fr, 0)
     alias = {"TAPOTE": "CHASSE", "TOILETTE": "MLEM", "TERRITOIRE": "MLEM", "ROULADE": "QUEUE"}
     return cl, alias
 
@@ -401,7 +456,42 @@ def bot_clips():
     fr += [(gc.dust(moved(B("wide", look=-1, wheel=k % 2, ant=2), 90 - 9 * k), [46 + 75 - 7.5 * k + 12]), 70) for k in range(17)]
     fr += [(C(), 80)] * 6 + [(moved(B("happy", wheel=k % 2), -60 + 6 * k), 80) for k in range(11)] + [(B("happy"), 400)]
     cl["FOLIE"] = (fr, 0)
-    alias = {"TAPOTE": "CHASSE", "TOILETTE": "CELLO", "TERRITOIRE": "MLEM", "ROULADE": "QUEUE"}
+    # DANSE (a step a beat, m1_draw.c): an arm up, then the other, both; he bobs, his antenna sways, his lamp blinks
+    fr = []
+    for i in range(8):
+        arms = ((2, 0), (1, 1), (0, 2), (2, 2))[i % 4]
+        c = B("happy", arms=arms, bob=i % 2, ant=(-2, 0, 2, 0)[i % 4], lamp=("Y", "O", "R", "Y")[i % 4])
+        fr.append((gc.notes(c, i // 2) if i % 4 == 3 else c, 150))
+    cl["DANSE"] = (fr, 1)
+    # JOUER (SEL): he juggles a ball over his head, hand to hand, then heads it away
+    fr = []
+    for k, (bx, by_) in enumerate(((52, 30), (49, 20), (44, 15), (39, 20), (36, 30), (39, 20), (44, 15), (49, 20), (52, 30))):
+        arms = (2, 0) if bx >= 49 else (0, 2) if bx <= 39 else (1, 1)
+        fr.append((gc.ball(B("happy" if k % 4 else "wide", look=1 if bx > 44 else -1 if bx < 44 else 0, arms=arms, bob=k % 2, lamp="Y"), bx, by_, "O", "Y"), 110))
+    fr += [(gc.ball(B("wide", arms=(1, 1), bob=1), x, y, "O", "Y"), 100) for x, y in ((44, 18), (52, 10), (62, 6), (72, 8), (82, 14))]
+    fr += [(B("happy", lamp="Y"), 500)]
+    cl["JOUER"] = (fr, 0)
+    # CACHE (SEL): off he rolls, left; his head and antenna peek in at the edge; then he races back in from the right
+    fr = [(B("open", look=-1), 250)] + [(moved(B("open", look=-1, wheel=k % 2, ant=1), -6 * k), 80) for k in range(12)] + [(C(), 120)] * 6
+    fr += [(gc.peek(B("open", look=1, ant=-1), -40), 200), (gc.peek(B("open", look=1, ant=-1), -36), 600),
+           (gc.peek(B("off", look=1), -36), 150), (gc.peek(B("open", look=1, ant=-1), -36), 500), (C(), 500)]
+    fr += [(moved(B("wide", look=-1, wheel=k % 2, ant=2), 60 - 6 * k), 60) for k in range(11)]
+    fr += [(B("happy", lamp="Y"), 300), (gc.hearts(B("heart", lamp="Y"), 2), 700)]
+    cl["CACHE"] = (fr, 0)
+    # CADEAU (SEL): off he rolls, right, and comes back with a flower for you, held out in his hand
+    fr = [(B("open", look=1), 250)] + [(moved(B("open", look=1, wheel=k % 2, ant=-1), 6 * k), 80) for k in range(12)] + [(C(), 120)] * 8
+    fr += [(moved(B("open", look=-1, wheel=k % 2, ant=1), 60 - 6 * k), 90) for k in range(11)]
+    hf = lambda e, n=0: gc.hearts(gc.flower(B(e, hand=(52, 33), lamp="Y"), int(T(53, 31)[0]), int(T(53, 31)[1]), "P", "Y"), n) if n else \
+                        gc.flower(B(e, hand=(52, 33), lamp="Y"), int(T(53, 31)[0]), int(T(53, 31)[1]), "P", "Y")
+    fr += [(hf("happy"), 600), (hf("heart", 2), 600), (hf("heart", 3), 600), (hf("happy"), 400)]
+    cl["CADEAU"] = (fr, 0)
+    # PASSE (the tape plays): he rolls in, stops, looks up at the reels, wonders, rolls on out
+    fr = [(moved(B("open", look=1, wheel=k % 2, ant=-1), -66 + 6 * k), 110) for k in range(11)] + [(B("open"), 300)]
+    fr += [(B("wide", look=-1, ant=-2), 150), (B("open", look=-1, ant=-1), 1600), (gc.quest(B("open", look=-1, ant=-1)), 900),
+           (B("wide", look=1, ant=2), 150), (B("open", look=1, ant=1), 1400), (B("happy", lamp="Y"), 600)]
+    fr += [(moved(B("open", look=1, wheel=k % 2, ant=-1), 6 * k), 110) for k in range(12)]
+    cl["PASSE"] = (fr, 0)
+    alias = {"TAPOTE": "CHASSE", "TOILETTE": "CELLO", "TERRITOIRE": "MLEM", "ROULADE": "QUEUE", "CALIN": "MLEM"}
     return cl, alias
 
 
@@ -527,7 +617,37 @@ def fish_clips():
     fr += [(fish_front(W(), 40, 48, "open", k=FS * 1.3), 200), (fish_front(W(), 40, 46, "content", "kiss", k=FS * 1.6), 300)]
     fr += [(gc.hearts(fish_front(W(), 40, 46, "content", "kiss", k=FS * 1.6), 1 + i // 6), 150) for i in range(18)] + [(fish_front(W(), 40, 52, "happy"), 400)]
     cl["TERRITOIRE"] = (fr, 0)
-    alias = {"TAPOTE": "CHASSE", "TOILETTE": "MLEM", "CELLO": "ROULADE", "QUEUE": "ROULADE", "GRIFFES": "VIDE"}
+    fr = []                                                      # DANSE (a step a beat): little rounds, a bubble each
+    for i in range(8):
+        a = i / 8 * math.tau
+        x, y = 40 + int(round(math.cos(a) * 10)), 50 + int(round(math.sin(a) * 7))
+        f = -1 if math.sin(a) > 0 else 1
+        c = fish_side(W(), x, y, f, i, "happy")
+        fr.append((bubbles(c, [(x + f * 11, y - 5), (x + f * 13, y - 11)]) if i % 2 else c, 150))
+    cl["DANSE"] = (fr, 1)
+    fr = []                                                      # JOUER (SEL): a ball of air; he bumps it up with his nose, again
+    for k, (fy, by_) in enumerate(((58, 40), (54, 36), (50, 40), (47, 37), (47, 30), (50, 26), (54, 30), (50, 36), (47, 33), (47, 26), (52, 20), (56, 14))):
+        fr.append((gc.ball(fish_front(W(), 40, fy, "happy" if k % 3 == 2 else "open"), 40, by_, "W", "H"), 110))
+    fr += [(fish_front(W(), 40, 52, "happy"), 500)]
+    cl["JOUER"] = (fr, 0)
+    fr = [(fish_side(W(), 40 - k * 6, 52, -1, k), 90) for k in range(10)] + [(C(), 120)] * 6   # CACHE (SEL): off he swims,
+    fr += [(fish_side(W(), -6, 50, 1, 0), 200), (fish_side(W(), -3, 50, 1, 1), 600), (fish_side(W(), -3, 50, 1, 2, "content"), 150),
+           (fish_side(W(), -3, 50, 1, 3), 500), (C(), 500)]                                          # .. peeks in, ..
+    fr += [(fish_side(W(), 94 - k * 6, 52, -1, k), 60) for k in range(10)]                         # .. dashes back
+    fr += [(fish_front(W(), 40, 52, "happy"), 300), (gc.hearts(fish_front(W(), 40, 52, "happy"), 2), 700)]
+    cl["CACHE"] = (fr, 0)
+    fr = [(fish_side(W(), 40 + k * 2, 52 + k * 2, 1, k), 120) for k in range(8)]                  # CADEAU (SEL): he dives to
+    fr += [(fish_side(W(), 56, 68, 1, k % 4, "content"), 140) for k in range(6)]                    # the sand, digs, and comes
+    fr += [(pearl(fish_side(W(), 56 - k * 2, 66 - k * 2, -1, k), 60, 74), 120) for k in range(6)]  # up: a pearl, for you
+    fr += [(pearl(fish_front(W(), 42, 52, "happy"), 60, 74), 500), (gc.hearts(pearl(fish_front(W(), 42, 52, "happy"), 60, 74), 2), 600),
+           (gc.hearts(pearl(fish_front(W(), 42, 52, "happy", fin=1), 60, 74), 3), 600)]
+    cl["CADEAU"] = (fr, 0)
+    fr = [(fish_side(W(), -14 + k * 6, 50, 1, k), 110) for k in range(10)]                        # PASSE (the tape plays):
+    fr += [(fish_front(W(), 46, 50, "happy"), 300), (fish_front(W(), 40, 52, "open"), 1600),        # he swims in, stops,
+           (gc.quest(fish_front(W(), 26, 52, "open")), 900), (fish_side(W(), 54, 52, 1, 0), 1400)]  # looks at the reels,
+    fr += [(fish_side(W(), 54 + k * 6, 52, 1, k), 110) for k in range(7)]                          # swims on out
+    cl["PASSE"] = (fr, 0)
+    alias = {"TAPOTE": "CHASSE", "TOILETTE": "MLEM", "CELLO": "ROULADE", "QUEUE": "ROULADE", "GRIFFES": "VIDE", "CALIN": "TERRITOIRE"}
     return cl, alias
 
 

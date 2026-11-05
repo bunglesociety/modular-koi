@@ -313,6 +313,9 @@ static void fm1_main(void)
     scrn.idle = fm1_ms;                        /* (MENU > SCREEN OFF: from here) */
 #if MODULAR_ONE
     m1_init();
+#if !BOARD_SMK37
+    m1_boot();                                 /* the songs and sketches kept, for the tape */
+#endif
 #endif
 
     for (;;) {
@@ -402,16 +405,25 @@ static void fm1_main(void)
         felucca_dbg.stage = 1;
 #if MODULAR_ONE
         m1_input();                                   /* Modular One: its own controls and screen (m1_ui.c, m1_draw.c) */
+#if !BOARD_SMK37
+        m1_service();                                 /* REC held: a sketch to keep; the list (m1_book.c) */
+#endif
         settings_poll();
         felucca_dbg.stage = 2;
+#if BOARD_SMK37
         smk_wheels();
+#endif
         m1_leds();
+#if BOARD_SMK37
         padled_flush();
+#endif
         m1_draw();
         felucca_dbg.stage = 9;
         while (fm1_ms - m < 15u) {
             m1_input();
+#if BOARD_SMK37
             smk_wheels();
+#endif
 #else
         ui_input();
         settings_poll();                              /* queued settings save: only while stopped */

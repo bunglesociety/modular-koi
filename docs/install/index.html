@@ -1,0 +1,992 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-only
+     Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments (the installer: Felucca's web/fm1ota.js, fm1pkg.js)
+     Copyright (C) 2026 Alexis Arakis (Bungle Society) (Modular Koi)
+     The installer of Modular Koi for the M-VAVE FM-1. tools/make_m1_installer.py --koi (one file to open from
+     the disk: the package inside) fills in the library (fm1pkg.js, fm1ota.js), the metadata and the picture. Chrome or
+     Edge (Web MIDI with SysEx). Back to the official firmware: M-VAVE's own updater (no stock file here). -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modular Koi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  /* the pond: four greens of an old handheld screen */
+  :root { --bg: #c9d3a6; --grain: #bcc794; --panel: #d8e0b6; --ink: #0f380f; --dim: #306230; --green: #306230; --warm: #8c3b1f;
+          --shadow: rgba(15, 56, 15, .28); --bar: #aebc7e; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0d2112; --grain: #0a1b0e; --panel: #14301b; --ink: #c9d3a6; --dim: #8bac0f; --green: #8bac0f;
+                                      --warm: #e09a76; --shadow: rgba(0, 0, 0, .45); --bar: #24452b; }
+  }
+  :root[data-theme="dark"] { --bg: #0d2112; --grain: #0a1b0e; --panel: #14301b; --ink: #c9d3a6; --dim: #8bac0f; --green: #8bac0f;
+                             --warm: #e09a76; --shadow: rgba(0, 0, 0, .45); --bar: #24452b; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background-color: var(--bg); color: var(--ink); }
+  body { font: 15px/1.6 "IBM Plex Mono", ui-monospace, Menlo, monospace; padding: 0 16px 56px;
+         background-image: radial-gradient(var(--grain) 1px, transparent 1.2px); background-size: 7px 7px; }
+  .px { font-family: "Silkscreen", "IBM Plex Mono", monospace; letter-spacing: .04em; font-weight: 400; }
+  main { max-width: 660px; margin: 0 auto; padding-top: 26px; }
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .top a { color: var(--dim); text-decoration: none; font-size: 13px; }
+  .lang { font-family: "Silkscreen", monospace; font-size: 12px; color: var(--dim); }
+  .lang a { color: var(--dim); cursor: pointer; padding: 2px 4px; text-decoration: none; }
+  .lang a.on { color: var(--ink); text-decoration: underline; }
+  .head { display: grid; grid-template-columns: 1fr 150px; gap: 22px; align-items: end; margin: 18px 0 22px; }
+  @media (max-width: 520px) { .head { grid-template-columns: 1fr 104px; gap: 14px; } }
+  h1 { font-size: clamp(26px, 6vw, 34px); line-height: 1.05; margin: 0 0 8px; }
+  .tag { color: var(--dim); margin: 0; }
+  .screen { background: #1d1b18; padding: 8px; border-radius: 8px; box-shadow: 5px 5px 0 var(--shadow); }
+  img.map { display: block; width: 100%; height: auto; margin: 6px 0 14px; border-radius: 6px; }
+  .screen img { display: block; width: 100%; height: auto; aspect-ratio: 1; image-rendering: pixelated; }
+  .box { background: var(--panel); border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--shadow); padding: 18px 20px; margin-bottom: 22px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  ol.steps { margin: 0; padding-left: 22px; }
+  ol.steps li { margin: 5px 0; }
+  button { font-family: "Silkscreen", monospace; font-size: 15px; letter-spacing: .04em; background: var(--ink); color: var(--bg);
+           border: 0; padding: 12px 20px; cursor: pointer; box-shadow: 4px 4px 0 var(--shadow); margin: 14px 12px 0 0; }
+  button.ghost { background: transparent; color: var(--ink); outline: 3px solid var(--ink); outline-offset: -3px; box-shadow: none; }
+  button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--shadow); }
+  button:disabled { opacity: .35; cursor: default; transform: none; }
+  button:focus-visible { outline: 3px solid var(--warm); outline-offset: 3px; }
+  .bar { height: 10px; background: var(--bar); margin-top: 16px; display: flex; gap: 2px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--green); transition: width .2s; }
+  #status { margin-top: 12px; min-height: 1.6em; font-weight: 600; }
+  #status.bad { color: var(--warm); }
+  #who { margin: 10px 0 0; color: var(--dim); }
+  #who.bad { color: var(--warm); font-weight: 600; }
+  details { margin-top: 10px; font-size: 12px; color: var(--dim); }
+  details.back summary { font-family: "Silkscreen", monospace; font-size: 14px; color: var(--ink); cursor: pointer; }
+  pre { white-space: pre-wrap; font-size: 11.5px; margin: 6px 0 0; max-height: 180px; overflow: auto; }
+  input[type=file] { font: inherit; font-size: 13px; margin-top: 8px; max-width: 100%; color: var(--ink); }
+  .after { display: none; }
+  .after.on { display: block; }
+  .warn { border-color: var(--warm); }
+  .warn h2 { color: var(--warm); }
+  dl.ctl { display: grid; grid-template-columns: 9.5em 1fr; gap: 4px 14px; margin: 0; font-size: 13.5px; }
+  @media (max-width: 520px) { dl.ctl { grid-template-columns: 1fr; } dl.ctl dd { margin-bottom: 6px; } }
+  dl.ctl dt { font-family: "Silkscreen", monospace; font-size: 12.5px; }
+  dl.ctl dd { margin: 0; }
+  .small { font-size: 12.5px; color: var(--dim); }
+  .small a, .box a { color: inherit; }
+  p { margin: 0 0 10px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><a href="https://bunglesociety.com" class="px" id="home">← BUNGLE SOCIETY</a><div class="lang"><a data-lang="fr">FR</a>/<a data-lang="en">EN</a></div></div>
+  <div class="head">
+    <div><h1 class="px" data-t="title"></h1><p class="tag" data-t="tag"></p></div>
+    <div class="screen"><img src="../img/bassin.gif" alt="" width="240" height="240"></div>
+  </div>
+
+  <div class="box">
+    <h2 class="px" data-t="h1"></h2>
+    <ol class="steps"><li data-t="s1"></li><li data-t="s2"></li><li data-t="s3"></li></ol>
+    <button id="check" class="ghost" data-t="check"></button>
+    <p id="who"></p>
+  </div>
+
+  <div class="box">
+    <h2 class="px" data-t="h2"></h2>
+    <p data-t="s4"></p>
+    <button id="go" disabled data-t="install"></button>
+    <div class="bar"><i id="bar"></i></div>
+    <p id="status"></p>
+    <details><summary data-t="details"></summary><pre id="log"></pre></details>
+  </div>
+
+  <div class="box after" id="after">
+    <h2 class="px" data-t="nextTitle"></h2>
+    <p data-t="next1"></p>
+    <dl class="ctl">
+      <dt data-t="c1t"></dt><dd data-t="c1"></dd>
+      <dt data-t="c2t"></dt><dd data-t="c2"></dd>
+      <dt data-t="c3t"></dt><dd data-t="c3"></dd>
+      <dt data-t="c4t"></dt><dd data-t="c4"></dd>
+      <dt data-t="c5t"></dt><dd data-t="c5"></dd>
+      <dt data-t="c6t"></dt><dd data-t="c6"></dd>
+      <dt data-t="c7t"></dt><dd data-t="c7"></dd>
+      <dt data-t="c8t"></dt><dd data-t="c8"></dd>
+    </dl>
+  </div>
+
+  <div class="box warn">
+    <h2 class="px" data-t="riskTitle"></h2>
+    <p data-t="beta"></p>
+    <p class="small" data-t="presets"></p>
+    <p class="small"><span data-t="back"></span> <a href="https://www.m-vave.com/download" target="_blank" rel="noopener">www.m-vave.com/download</a></p>
+    <p class="small" data-t="newchip"></p>
+    <p class="small"><span data-t="brick"></span>
+      <a href="https://github.com/kurogedelic/FM-1-transporter" target="_blank" rel="noopener">FM-1-transporter</a></p>
+  </div>
+
+  <p class="small">Modular Koi by Alexis Arakis, <a href="https://bunglesociety.com" target="_blank" rel="noopener">Bungle Society</a>.
+    <span data-t="based"></span> Felucca by Leo Kuroshita (@kurogedelic), <a href="https://hugelton.com" target="_blank" rel="noopener">Hügelton Instruments</a>.<br>
+    Font: Silkscreen (SIL OFL 1.1). The package holds three JieLi AC79 SDK files (Apache-2.0).<br>
+    M-VAVE and FM-1 are trademarks of their respective owners. <span data-t="notmvave"></span><br>
+    <span data-t="license"></span> <a href="https://github.com/bunglesociety/modular-compagnon" target="_blank" rel="noopener">github.com/bunglesociety/modular-compagnon</a></p>
+</main>
+<script>
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+//
+// FM-1 (and SMK-37 Pro) .fwsc packages in the browser: the package identity and the image the
+// device reads during an update.
+
+const BLOCKS = 20, BLK = 0x30, KEEP = 0x2F, MAX_BLOCKS = 64;
+const STOCK_V15_SHA256 = "db1642b2b6fa5c2cccb11ffd13878068bb28601678d3644049f99dc40e7edb8a";
+const STOCK_APP_SIZE = 0x8DFBC;
+const STOCK_V15_SIZE = 699956;
+
+const T = new Uint16Array(256);
+for (let i = 0; i < 256; i++) {
+  let c = i << 8;
+  for (let k = 0; k < 8; k++) c = c & 0x8000 ? (c << 1) ^ 0x1021 : c << 1;
+  T[i] = c & 0xFFFF;
+}
+
+function crc16(d, crc = 0) {
+  for (let i = 0; i < d.length; i++) crc = ((crc << 8) & 0xFFFF) ^ T[((crc >> 8) ^ d[i]) & 0xFF];
+  return crc;
+}
+
+function enc(buf, off, size, key = 0xFFFF) {
+  for (let i = 0; i < size; i++) {
+    buf[off + i] ^= key & 0xFF;
+    key = ((key * 2) ^ (key & 0x8000 ? 0x1021 : 0)) & 0xFFFF;
+  }
+}
+
+function sfc(buf, off, size, base, key) {
+  for (let i = 0; i < size; i += 32) enc(buf, off + i, Math.min(size - i, 32), key ^ ((off + i - base) >> 2));
+}
+
+function chipkeyDecode(d) {
+  let sum = 0;
+  for (let i = 0; i < 16; i++) sum += d[i];
+  sum &= 0xFF;
+  sum = sum >= 0xE0 ? 0xAA : sum <= 0x10 ? 0x55 : sum;
+  let k = 0;
+  for (let i = 0; i < 16; i++) if ((d[16 + i] ^ d[15 - i]) < sum) k |= 1 << i;
+  return k;
+}
+
+const align32 = (v) => (v + 31) & ~31;
+const u16 = (b, o) => b[o] | (b[o + 1] << 8);
+const u32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
+function w16(b, o, v) { b[o] = v & 0xFF; b[o + 1] = (v >> 8) & 0xFF; }
+function w32(b, o, v) { w16(b, o, v & 0xFFFF); w16(b, o + 2, (v >>> 16) & 0xFFFF); }
+
+class Entry {                                   // JLFS head, 32 bytes
+  constructor(raw, off) {
+    this.hdrOff = off;
+    this.hcrc = u16(raw, off);
+    this.dcrc = u16(raw, off + 2);
+    this.offset = u32(raw, off + 4);
+    this.size = u32(raw, off + 8);
+    this.flags = raw[off + 12];
+    this.resvd = raw[off + 13];
+    this.index = u16(raw, off + 14);
+    this.rawName = raw.slice(off + 16, off + 32);
+    const z = this.rawName.indexOf(0);
+    this.name = String.fromCharCode(...this.rawName.slice(0, z < 0 ? 16 : z));
+    if (crc16(raw.subarray(off + 2, off + 32)) !== this.hcrc) throw new Error(`JLFS header CRC mismatch @${off.toString(16)}`);
+  }
+  packInto(buf) {
+    const o = this.hdrOff;
+    w16(buf, o + 2, this.dcrc); w32(buf, o + 4, this.offset); w32(buf, o + 8, this.size);
+    buf[o + 12] = this.flags; buf[o + 13] = this.resvd; w16(buf, o + 14, this.index);
+    buf.set(this.rawName, o + 16);
+    this.hcrc = crc16(buf.subarray(o + 2, o + 32));
+    w16(buf, o, this.hcrc);
+  }
+}
+
+class Package {
+  constructor(bytes) {
+    this.raw = new Uint8Array(bytes);
+    this.parseUfw();
+    this.flash = this.raw.slice(this.flashFileOff, this.flashFileOff + this.flashSize);
+    this.parseFlash();
+  }
+
+  get product() { return productOf(this.raw); }
+
+  setProduct(name) {
+    if (name.length > BLOCKS) throw new Error("product name too long");
+    for (let i = 0; i < BLOCKS; i++) {
+      const m = i < name.length ? (name.charCodeAt(i) + i + 1) & 0xFF : 0x7D;
+      if (i < name.length && m === 0x7D) throw new Error("product name encodes to the unused marker");
+      this.raw[i * BLK + KEEP] = m;
+    }
+  }
+
+  headerBytes() {
+    const h = new Uint8Array(BLOCKS * KEEP);
+    for (let i = 0; i < BLOCKS; i++) h.set(this.raw.subarray(i * BLK, i * BLK + KEEP), i * KEEP);
+    return h;
+  }
+
+  hdrFileOff(i) { return Math.floor(i / KEEP) * BLK + (i % KEEP); }
+
+  parseUfw() {
+    const h = this.headerBytes();
+    enc(h, 0, 0x40);
+    const hcrc = u16(h, 0), lcrc = u16(h, 2), nent = u16(h, 8);
+    if (crc16(h.subarray(2, 0x40)) !== hcrc) throw new Error("not an FM-1 .fwsc (UFW header CRC mismatch)");
+    this.skew = BLOCKS * BLK - h.length;
+    this.ufw = h;
+    this.nent = nent;
+    const hsize = 0x40 + nent * 0x50;
+    if (crc16(h.subarray(0x40, hsize)) !== lcrc) throw new Error("UFW entry list CRC mismatch");
+    this.entries = [];
+    for (let off = 0x40; off < hsize; off += 0x50) {
+      const e = h.slice(off, off + 0x50);
+      enc(e, 0, 0x50);
+      const z = e.subarray(0x40, 0x50).indexOf(0);
+      this.entries.push({ off, type: u16(e, 0), dcrc: u16(e, 4), dataOff: u32(e, 8), size: u32(e, 12),
+        name: String.fromCharCode(...e.subarray(0x40, z < 0 ? 0x50 : 0x40 + z)), plain: e });
+    }
+    const fl = this.entries.find((e) => e.type === 0);
+    if (!fl) throw new Error("no flash.bin in the package");
+    this.flashEntry = fl;
+    this.flashFileOff = fl.dataOff + this.skew;
+    this.flashSize = fl.size;
+    if (crc16(this.raw.subarray(this.flashFileOff, this.flashFileOff + fl.size)) !== fl.dcrc) throw new Error("flash.bin CRC mismatch");
+  }
+
+  parseFlash() {
+    const dec = this.flash.slice();
+    const h = dec.slice(0, 32);
+    enc(h, 0, 32);
+    if (crc16(h.subarray(2, 32)) !== u16(h, 0)) throw new Error("flash header CRC mismatch");
+    this.chipKey = null; this.appBase = null;
+    for (let off = 32; ; off += 32) {
+      enc(dec, off, 32);
+      const e = new Entry(dec, off);
+      if (e.name === "isd_config.ini") {
+        const blob = dec.subarray(e.offset, e.offset + 34);
+        if (crc16(blob.subarray(0, 32)) === u16(blob, 32)) this.chipKey = chipkeyDecode(blob.subarray(0, 32));
+      }
+      if (e.flags === 0x81 && e.name === "app_dir_head" && this.appBase === null) this.appBase = e.offset;
+      if (e.index) break;
+    }
+    if (this.chipKey === null || this.appBase === null) throw new Error("chip key or app_dir_head not found");
+    const b = this.appBase, k = this.chipKey, end = align32(b + 32);
+    sfc(dec, b, end - b, b, k);
+    const head = new Entry(dec, b);
+    const blkEnd = b + head.size;
+    if (blkEnd > end) sfc(dec, end, blkEnd - end, b, k);
+    this.sfcEnd = Math.max(end, blkEnd);
+    this.cfgLen = 0;
+    const probe = this.flash.slice(b, align32(blkEnd) + 32);
+    sfc(probe, 0, probe.length, 0, k);
+    try {
+      const cfg = new Entry(probe, blkEnd - b);
+      if (cfg.name === "cfg" && blkEnd + cfg.size <= this.flash.length) this.cfgLen = cfg.size;
+    } catch (_) { /* no cfg block */ }
+    if (this.cfgLen) {
+      const region = this.flash.slice(b, blkEnd + this.cfgLen);
+      sfc(region, 0, region.length, 0, k);
+      dec.set(region, b);
+      this.sfcEnd = blkEnd + this.cfgLen;
+    }
+    this.head = head;
+    this.app = null;
+    for (let off = b + 32; ; off += 32) {
+      const e = new Entry(dec, off);
+      if (e.flags === 0x82 && e.name === "app.bin") this.app = e;
+      if (e.index) break;
+    }
+    if (!this.app) throw new Error("app.bin not found in app area");
+    this.appOff = b + this.app.offset;
+    this.dec = dec;
+  }
+
+  // the new app, padded to the stock size (Felucca never changes the layout)
+  setApp(app) {
+    if (app.length > this.app.size) throw new Error(`app is ${app.length} B, the slot is ${this.app.size} B`);
+    const nw = new Uint8Array(this.app.size).fill(0xFF);
+    nw.set(app);
+    const a = this.app, h = this.head, b = this.appBase;
+    this.dec.set(nw, this.appOff);
+    a.dcrc = crc16(nw);
+    a.packInto(this.dec);
+    h.dcrc = crc16(this.dec.subarray(h.hdrOff + 32, h.hdrOff + h.size));
+    h.packInto(this.dec);
+    this.sfcEnd = Math.max(align32(b + 32), b + h.size + this.cfgLen);
+    const region = this.dec.slice(b, this.sfcEnd);
+    sfc(region, 0, region.length, 0, this.chipKey);
+    this.flash.set(region, b);
+  }
+
+  serialize() {
+    const out = this.raw.slice();
+    out.set(this.flash, this.flashFileOff);
+    const fl = this.flashEntry, e = fl.plain.slice();
+    w16(e, 4, crc16(this.flash));
+    enc(e, 0, 0x50);
+    const h = this.ufw.slice();
+    h.set(e, fl.off);
+    const hsize = 0x40 + this.nent * 0x50;
+    w16(h, 2, crc16(h.subarray(0x40, hsize)));
+    w16(h, 0, crc16(h.subarray(2, 0x40)));
+    enc(h, 0, 0x40);
+    for (let i = 0; i < hsize; i++) out[this.hdrFileOff(i)] = h[i];
+    return out;
+  }
+}
+
+// the package identity ("FM-1_904", "SMK-37 Pro_016"): one marker byte after each of the first 20 blocks
+function productOf(fwsc) {
+  if (fwsc.length < BLOCKS * BLK) throw new Error("not an FM-1 package (too short)");
+  let s = "";
+  for (let i = 0; i < BLOCKS; i++) {
+    const m = fwsc[i * BLK + KEEP];
+    if (m !== 0x7D) s += String.fromCharCode((m - i - 1) & 0xFF);
+  }
+  return s;
+}
+
+// interleave blocks: 20, then more while the marker is the unused 0x7D (the stock SMK-37 Pro v016 has 36)
+function blockCount(fwsc) {
+  let n = BLOCKS;
+  while (n < MAX_BLOCKS && (n + 1) * BLK <= fwsc.length && fwsc[n * BLK + KEEP] === 0x7D) n++;
+  return n;
+}
+
+function deinterleave(fwsc, blocks) {
+  const out = new Uint8Array(fwsc.length - blocks);
+  for (let i = 0; i < blocks; i++) out.set(fwsc.subarray(i * BLK, i * BLK + KEEP), i * KEEP);
+  out.set(fwsc.subarray(blocks * BLK), blocks * KEEP);
+  return out;
+}
+
+// the logical image's flash.bin (type 0) and ota.bin (type 100) match their CRCs (as fm1_install.py files_ok)
+function filesOk(img) {
+  if (img.length < 0x40) return false;
+  const rd = (a, o, n) => a.slice(o, o + n).reduce((v, x, i) => v + x * 2 ** (8 * i), 0);
+  const h = Uint8Array.from(img.subarray(0, 0x40));
+  enc(h, 0, 0x40);
+  if (crc16(h.subarray(2, 0x40)) !== rd(h, 0, 2)) return false;
+  const count = rd(h, 8, 2);
+  if (count < 1 || count > 8 || img.length < 0x40 + 0x50 * count) return false;
+  for (let i = 0; i < count; i++) {
+    const e = Uint8Array.from(img.subarray(0x40 + i * 0x50, 0x90 + i * 0x50));
+    enc(e, 0, 0x50);
+    const typ = rd(e, 0, 2), off = rd(e, 8, 4), size = rd(e, 12, 4);
+    if (off + size > img.length) return false;
+    if ((typ === 0 || typ === 100) && crc16(img.subarray(off, off + size)) !== rd(e, 4, 2)) return false;
+  }
+  return true;
+}
+
+// the image the device addresses during an update: the .fwsc without the marker bytes (20 blocks, or the
+// detected count when the files' CRCs agree: a 20-block package can have 0x7D after block 20 by chance)
+function logicalImage(fwsc) {
+  const n = blockCount(fwsc);
+  if (n !== BLOCKS) {
+    const img = deinterleave(fwsc, n);
+    if (filesOk(img) || !filesOk(deinterleave(fwsc, BLOCKS))) return img;
+  }
+  return deinterleave(fwsc, BLOCKS);
+}
+
+async function sha256hex(bytes) {
+  const d = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+// Only the user's unmodified official V15 is accepted for a return to stock.
+// The digest pins every file, loader and flash layout; filenames are not evidence.
+async function validateStockPackage(bytes) {
+  if (bytes.length !== STOCK_V15_SIZE || await sha256hex(bytes) !== STOCK_V15_SHA256)
+    throw new Error("Select the unmodified official FM-1 V15 file (FM-1.fwsc).");
+  const pkg = new Package(bytes);
+  if (pkg.product !== "FM-1_015" || pkg.flashFileOff !== 1044 || pkg.flashSize !== 602112 ||
+      pkg.appBase !== 16384 || pkg.appOff !== 16672 || pkg.app.size !== STOCK_APP_SIZE ||
+      !pkg.entries.some((e) => e.type === 100 && e.name === "ota.bin" && e.size === 19969))
+    throw new Error("The official firmware has an unsupported FM-1 layout.");
+  return { product: pkg.product, image: logicalImage(bytes), sha256: STOCK_V15_SHA256 };
+}
+
+// official V15 + Felucca app -> installable package (Uint8Array)
+async function buildFeluccaPackage(stockBytes, appBytes, product) {
+  const sha = await sha256hex(stockBytes);
+  if (sha !== STOCK_V15_SHA256) throw new Error("this is not the official FM-1 V15 firmware file (FM-1.fwsc)");
+  const pkg = new Package(stockBytes);
+  pkg.setApp(appBytes);
+  pkg.setProduct(product);
+  return pkg.serialize();
+}
+
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+//
+// The FM-1 USB-MIDI update protocol over WebMIDI (after tools/fm1_install.py).
+// Step 1: the running firmware (official
+// or Felucca) reads parts of the package and stages the update loader. Step 2:
+// the loader reads the whole image and writes it. Both steps are "the device
+// asks, we answer": cmd 0x30 read requests on the logical image.
+
+const HS_QUERY = [0xF0, 0x00, 0x32, 0x45, 0x00, 0x00, 0x00, 0x40, 0x7F, 0xF7];
+const UPGRADE = [0xF0, 0x22, 0x24, 0x35, 0x7F, 0xF7];
+const MAXDATA = 512;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const IS_OTA = (id) => /^ota-/i.test(id.model);
+// two models ("ota-" aside) are exactly the same: a package installs only on its own model (the SMK-37 Pro,
+// SMK-37 Elite and MKE-P37 builds each on their own model, never an FM-1 and an SMK)
+const sameModel = (a, b) => a.replace(/^ota-/i, "") === b.replace(/^ota-/i, "");
+
+// errors carry a code the pages translate: notfound, model, stopped, noloader, lost, noreturn,
+// mismatch (detail: the identity the device reports), badreq
+function fail(code, msg, detail = "") { const e = new Error(msg); e.code = code; e.detail = detail; return e; }
+
+function pack7(data) {
+  const out = []; let acc = 0, nb = 0;
+  for (const b of data) {
+    acc |= b << nb; nb += 8;
+    while (nb >= 7) { out.push(acc & 0x7F); acc >>>= 7; nb -= 7; }
+  }
+  if (nb) out.push(acc & 0x7F);
+  return out;
+}
+
+function unpack7(s) {
+  const out = []; let acc = 0, nb = 0;
+  for (const b of s) {
+    acc |= (b & 0x7F) << nb; nb += 7;
+    while (nb >= 8) { out.push(acc & 0xFF); acc >>>= 8; nb -= 8; }
+  }
+  return out;
+}
+
+function response(addr, data, fl = 0) {
+  const len = data.length;
+  const body = [0x00, 0x59, 0x30, (len + 8) & 0xFF, ((len + 8) >> 8) & 0xFF, 0, fl,
+    addr & 0xFF, (addr >>> 8) & 0xFF, (addr >>> 16) & 0xFF, (addr >>> 24) & 0xFF,
+    len & 0xFF, (len >> 8) & 0xFF, 0, ...data];
+  let s = 0;
+  for (let i = 6; i < body.length; i++) s += body[i];
+  body.push(~s & 0xFF);
+  return [0xF0, ...pack7(body), 0xF7];
+}
+
+function parseRequest(pkt) {
+  if (pkt[0] !== 0xF0 || pkt[pkt.length - 1] !== 0xF7) return null;
+  const u = unpack7(pkt.slice(1, -1));
+  if (u.length !== 15 || u[0] !== 0 || u[1] !== 0x59 || u[2] !== 0x30) return null;
+  let s = 0;
+  for (let i = 6; i < 14; i++) s += u[i];
+  if ((~s & 0xFF) !== u[14]) return null;
+  return { fl: u[6], addr: (u[7] | (u[8] << 8) | (u[9] << 16) | (u[10] << 24)) >>> 0, len: u[11] | (u[12] << 8) | (u[13] << 16) };
+}
+
+function parseIdentity(pkt) {
+  const d = unpack7(pkt.slice(1, -1));
+  if (d.length !== 34 || d[0] !== 0 || d[1] !== 0x59 || d[2] !== 0x11) return null;
+  const txt = String.fromCharCode(...d.slice(6, 33)).replace(/\0+$/, "");
+  const m = /^([^_]+)_(\d+)$/.exec(txt);
+  return m ? { text: txt, model: m[1], version: parseInt(m[2], 10) } : null;
+}
+
+// one MIDI in/out pair with a SysEx queue
+class Link {
+  constructor(input, output) {
+    this.input = input; this.output = output; this.q = []; this.waiter = null;
+    input.onmidimessage = (ev) => {
+      if (ev.data[0] !== 0xF0) return;
+      this.q.push(Array.from(ev.data));
+      if (this.waiter) { const w = this.waiter; this.waiter = null; w(); }
+    };
+  }
+  get lost() { return this.input.state === "disconnected" || this.output.state === "disconnected"; }
+  // false when the port is gone (unplugged): WebMIDI throws on a disconnected output
+  send(bytes) {
+    try { this.output.send(bytes); return true; } catch (_) { return false; }
+  }
+  drain() { this.q.length = 0; }
+  async read(ms) {
+    if (!this.q.length) {
+      let tm;
+      await Promise.race([new Promise((r) => { this.waiter = r; }), new Promise((r) => { tm = setTimeout(r, ms); })]);
+      clearTimeout(tm);
+      this.waiter = null;
+    }
+    return this.q.shift() || null;
+  }
+  close() { this.input.onmidimessage = null; }
+}
+
+async function handshake(link, tries = 3) {
+  link.drain();
+  for (let t = 0; t < tries; t++) {
+    if (!link.send(HS_QUERY)) return null;
+    const end = Date.now() + 1000;
+    while (Date.now() < end) {
+      const p = await link.read(end - Date.now());
+      if (!p) break;
+      const id = parseIdentity(p);
+      if (id) return id;
+    }
+  }
+  return null;
+}
+
+class Updater {
+  constructor(access, log) {
+    this.access = access;
+    this.log = log || (() => {});
+  }
+
+  // every in/out pair with the same port name that answers the handshake
+  async find(filter) {
+    const outs = [...this.access.outputs.values()];
+    for (const input of this.access.inputs.values()) {
+      if (input.state === "disconnected") continue;
+      if (!/fm-1|smk|elite|mke-p37|starry|felucca|ota|composite|sinco|usb-midi/i.test(input.name || "")) continue;   // never probe other gear
+      const output = outs.find((o) => o.name === input.name && o.state !== "disconnected");
+      if (!output) continue;
+      try { await input.open(); await output.open(); } catch (_) { continue; }
+      const link = new Link(input, output);
+      const id = await handshake(link, 2);
+      if (id && (!filter || filter(id))) return { link, id, name: input.name };
+      link.close();
+    }
+    return null;
+  }
+
+  async waitFor(filter, ms) {
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      const dev = await this.find(filter);
+      if (dev) return dev;
+      await sleep(1000);
+    }
+    return null;
+  }
+
+  // serve read requests until the device asks for one of the finish addresses; stops early
+  // when the port disappears (lost: true) instead of waiting out idleMs
+  async serve(link, image, finishAddr, idleMs, onProgress) {
+    let served = 0, last = Date.now();
+    for (;;) {
+      const pkt = await link.read(1000);
+      if (!pkt) {
+        if (link.lost) return { served, finished: false, lost: true };
+        if (Date.now() - last > idleMs) return { served, finished: false };
+        continue;
+      }
+      const r = parseRequest(pkt);
+      if (!r) continue;
+      last = Date.now();
+      if (r.addr === 0xE0000000 || r.addr === 0xF0000000) {
+        link.send(response(r.addr, [...new TextEncoder().encode("success"), 0]));
+        if (r.addr === finishAddr) return { served, finished: true };
+        continue;
+      }
+      if (r.len > MAXDATA || r.addr + r.len > image.length) throw fail("badreq", `bad request ${r.addr.toString(16)}+${r.len}`);
+      await sleep(10);
+      if (!link.send(response(r.addr, Array.from(image.subarray(r.addr, r.addr + r.len)), r.fl))) {
+        return { served, finished: false, lost: true };
+      }
+      served++;
+      if (onProgress) onProgress(served, r.addr);
+    }
+  }
+
+  // full install: running firmware -> loader -> new firmware
+  async install(image, product, onStep) {
+    const step = onStep || (() => {});
+    const dev = await this.find((id) => !IS_OTA(id));
+    if (!dev) throw fail("notfound", "FM-1 not found (USB cable, and no other app using it?)");
+    const [model] = product.split("_");
+    if (!sameModel(dev.id.model, model)) { dev.link.close(); throw fail("model", `the device is ${dev.id.text}, the package is for ${product}`); }
+    step("start", dev.id.text);
+    dev.link.send(UPGRADE);
+    await sleep(2000);
+    const s1 = await this.serve(dev.link, image, 0xE0000000, 8000, (n) => step("verify", n));
+    dev.link.close();
+    if (!s1.finished) throw fail(s1.lost ? "lost" : "stopped", `the device ${s1.lost ? "was disconnected" : "stopped"} after ${s1.served} requests: nothing was written`);
+    step("loader");
+    await sleep(3000);
+    const ota = await this.waitFor((id) => id.model === "ota-" + model, 30000);
+    if (!ota) throw fail("noloader", "the update loader did not appear. Replug the USB cable and press Install again: the device stays in update mode until it is finished.");
+    const s2 = await this.write(ota, image, step);
+    if (!s2.finished) throw fail(s2.lost ? "lost" : "stopped", `the loader ${s2.lost ? "was disconnected" : "stopped"} after ${s2.served} requests. Replug and press Install again to resume.`);
+    step("reboot");
+    await sleep(3000);
+    const back = await this.waitFor((id) => !IS_OTA(id), 40000);
+    if (!back) throw fail("noreturn", "the device did not come back: power-cycle it");
+    back.link.close();
+    if (back.id.text !== product) throw fail("mismatch", `installed, but the device reports ${back.id.text}`, back.id.text);
+    step("done", back.id.text);
+    return back.id.text;
+  }
+
+  // step 2 with the loader found by find()/waitFor()
+  async write(ota, image, step) {
+    ota.link.send(UPGRADE);
+    await sleep(2000);
+    const s2 = await this.serve(ota.link, image, 0xF0000000, 180000, (n) => step("write", n));
+    ota.link.close();
+    return s2;
+  }
+
+  // resume: the device is already in update mode (loader) -> true when the write finished. product: the
+  // package's identity; the loader's model must be exactly the package's (sameModel, as install()): an SMK's
+  // loader never gets an FM-1 image nor another model's, and without the identity nothing is written
+  async resume(image, onStep, product = "") {
+    const model = (product || "").split("_")[0];
+    const ota = await this.find(IS_OTA);
+    if (!ota) return false;
+    if (!product || !sameModel(ota.id.model, model)) {
+      ota.link.close();
+      throw fail("model", `the device is in the update mode of ${ota.id.text}, the package is for ${product || "an unknown model"}`, ota.id.text);
+    }
+    const step = onStep || (() => {});
+    const result = await this.write(ota, image, step);
+    if (!result.finished) return false;
+    if (product) {
+      step("reboot");
+      await sleep(3000);
+      const back = await this.waitFor((id) => !IS_OTA(id) && sameModel(id.model, model), 40000);
+      if (!back) throw fail("noreturn", "The FM-1 did not return after resuming the write.");
+      back.link.close();
+      if (back.id.text !== product) throw fail("mismatch", "The FM-1 reports a different firmware after resuming.", back.id.text);
+      step("done", back.id.text);
+    }
+    return true;
+  }
+}
+
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Alexis Arakis (Bungle Society)
+// What runs on the connected FM-1 or SMK-37, read before installing: the update identity (MODEL_NNN, the handshake of
+// fm1ota.js) and the editor's INFO (editor.c: "FELUCCA " + the version string). From both: the firmware, its version,
+// and whether this package may go on it. Used by the install pages of Modular One, Modular Koi and Modular Compagnon
+// (inlined after fm1ota.js: it uses its Updater, sameModel and IS_OTA-like tests).
+//
+// The names the firmwares give (INFO):
+//   Modular Koi        "FELUCCA KOI 0.1"                 (tools/build.py --board koi --release 0.1)
+//   Modular One        "FELUCCA M1 0.3 BETA"             (0.3 on; before: "FELUCCA M1 0.1 BETA", "FELUCCA 0.2-BETA")
+//   Modular Compagnon  "FELUCCA MC 1.1"                  (1.1 on; 1.0: "FELUCCA v1.0", identity _900)
+//   Felucca            "FELUCCA v1.6.1"
+//   M-VAVE's own firmware gives an identity (MODEL_0NN) and no INFO.
+
+const ED_HDR = [0x7D, 0x46, 0x4C];
+
+// the editor's INFO on an open link: its version string, or null (no answer: not a Felucca firmware)
+async function readInfo(link, ms = 900) {
+  link.drain();
+  if (!link.send([0xF0, ...ED_HDR, 1, 0xF7])) return null;
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    const p = await link.read(end - Date.now());
+    if (!p) break;
+    if (p[1] === ED_HDR[0] && p[2] === ED_HDR[1] && p[3] === ED_HDR[2] && p[4] === 1) {
+      let s = "";
+      for (let i = 5; i < p.length - 1 && p[i]; i++) s += String.fromCharCode(p[i]);
+      return s;
+    }
+  }
+  return null;
+}
+
+// "0.3", "1.6.1" -> [0, 3], [1, 6, 1]; compare: -1 0 1
+const verParts = (v) => String(v || "").replace(/^v/i, "").split(/[^0-9]+/).filter((x) => x !== "").map(Number);
+function verCmp(a, b) {
+  const x = verParts(a), y = verParts(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] || 0) - (y[i] || 0);
+    if (d) return d < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
+// identity { text, model, version } (+ the INFO string) -> { family, name, version }
+//   family: "koi" | "one" | "compagnon" | "felucca" | "stock" | "ota" | "unknown"
+function classify(id, info) {
+  if (/^ota-/i.test(id.model)) return { family: "ota", name: "", version: "" };
+  const nnn = id.version, idver = nnn >= 900 ? `${Math.floor(nnn / 10) % 10}.${nnn % 10}` : "";
+  if (info == null)
+    return nnn < 900 ? { family: "stock", name: "M-VAVE", version: String(nnn).padStart(3, "0") }
+                     : { family: "unknown", name: "", version: idver };
+  const s = info.replace(/^FELUCCA\s*/i, "").trim();
+  let m;
+  if ((m = /^KOI\s+v?([0-9][0-9.]*)/i.exec(s))) return { family: "koi", name: "Modular Koi", version: m[1] };
+  if ((m = /^MC\s+v?([0-9][0-9.]*)/i.exec(s))) return { family: "compagnon", name: "Modular Compagnon", version: m[1] };
+  if ((m = /^M1\s+v?([0-9][0-9.]*)/i.exec(s))) return { family: "one", name: "Modular One", version: m[1] };
+  if (/^FM-1$/i.test(id.model) && (m = /^([0-9]\.[0-9])-?\s*BETA/i.exec(s)))   // Modular One 0.1 / 0.2 releases
+    return { family: "one", name: "Modular One", version: m[1] };
+  if (!/^FM-1$/i.test(id.model) && nnn >= 900 && (m = /^v?([0-9]\.[0-9][0-9.]*)/i.exec(s)) &&
+      (m[1].startsWith(idver) || /^1\.0(\.|$)/.test(m[1])))
+    return { family: "compagnon", name: "Modular Compagnon", version: m[1] };   // Modular Compagnon 1.0 on an SMK-37 (_900)
+  if ((m = /^v?([0-9][0-9.]*)/i.exec(s))) return { family: "felucca", name: "Felucca", version: m[1] };
+  return { family: "unknown", name: s, version: idver };
+}
+
+// what is on the device: null (none found) or { id, info, family, name, version, link: closed }
+async function probe(updater) {
+  const dev = await updater.find(() => true);
+  if (!dev) return null;
+  const ota = /^ota-/i.test(dev.id.model);
+  const info = ota ? null : await readInfo(dev.link);
+  dev.link.close();
+  return { id: dev.id, info, ...classify(dev.id, info) };
+}
+
+// may this package go on it? pkg: { family, version, product }. -> { ok, key, warn }
+//   key: "otherModel" | "ota" | "same" | "update" | "older" | "replace" | "fresh"
+function verdict(dev, pkg) {
+  const model = pkg.product.split("_")[0];
+  if (dev.id.model.replace(/^ota-/i, "") !== model) return { ok: false, key: "otherModel" };
+  if (dev.family === "ota") return { ok: true, key: "ota" };
+  if (dev.family === pkg.family) {
+    const c = verCmp(dev.version, pkg.version);
+    if (c === 0) return { ok: true, key: "same" };
+    return c < 0 ? { ok: true, key: "update" } : { ok: true, key: "older", warn: true };
+  }
+  return { ok: true, key: dev.family === "stock" ? "fresh" : "replace" };
+}
+
+// what the device runs, in words (the pages add "on your FM-1:")
+function devLabel(dev, lang) {
+  const fr = lang === "fr";
+  switch (dev.family) {
+  case "stock": return (fr ? "le firmware d'origine M-VAVE (" : "M-VAVE's original firmware (") + dev.version + ")";
+  case "ota": return fr ? "en mode mise à jour" : "in update mode";
+  case "unknown": return fr ? "un firmware inconnu" + (dev.version ? " (" + dev.version + ")" : "") : "an unknown firmware" + (dev.version ? " (" + dev.version + ")" : "");
+  default: return dev.name + " " + dev.version;
+  }
+}
+
+const $ = (id) => document.getElementById(id);
+const TEXT = {
+  fr: {
+    title: "Modular Koi FM-1", tag: "Le firmware de Bungle Society qui change le FM-1 en tambour à languettes. On le tient comme une console portable et on joue avec les pouces, au-dessus d'un bassin de carpes koï.",
+    h1: "1. Brancher", s1: "Ouvre cette page dans Chrome ou Edge, sur un ordinateur (pas Safari, pas Firefox, pas de téléphone).",
+    s2: "Branche le FM-1 directement à l'ordinateur avec un câble USB de données (pas de hub). Allume-le.",
+    s3: "Ferme les autres logiciels qui utilisent le MIDI (ton logiciel de musique, l'app M-VAVE…).",
+    check: "Lire le FM-1", h2: "2. Installer",
+    s4: "Clique Installer, autorise le MIDI quand Chrome le demande, et ne débranche rien jusqu'à « Terminé » (environ 2 minutes). Le FM-1 redémarre tout seul.",
+    install: "Installer", details: "Détails techniques",
+    nextTitle: "Et maintenant ?",
+    next1: "Le FM-1 redémarre sur Modular Koi. Tiens-le comme une console portable : les touches sous tes pouces sont le tambour, en do majeur comme un vrai (la tonalité se change dans GLO).",
+    c1t: "LES POUCES", c1: "Une seule octave, comme le vrai tambour : sol, la, si sous le do, et le do aigu en haut. À gauche : sol, do, mi, sol en bas, si, si au-dessus. À droite : la, fa, ré, la en bas, et le do aigu sur la grande touche du coin. Au milieu, en bas : do ré mi fa sol la si do ; en haut : do, ré, mi, sol, la. Les mêmes lames, partout sous les pouces.",
+    c2t: "LES ROULEMENTS · HARMO", c2: "Sur la dernière lame jouée. OP3 : un roulement qui part vite et ralentit (le doigt qui rebondit). MONO : un roulement qui part lentement et accélère. Un appui : le geste entier ; maintenu, il continue à sa dernière vitesse. Leurs touches restent allumées. POLY : les harmoniques (maintenu, ou un appui).",
+    c3t: "PRESETS · ALGORITHM", c3: "La gamme du tambour (majeur, pentatonique, mineur, Akebono, dorien, Hijaz ; la tonalité dans GLO) · la matière (acier, grand tambour grave, verre, bois).",
+    c4t: "SELECT · K1 à K3", c4: "Le jour et la nuit · la frappe (douce ou dure), la résonance (au milieu : le vrai tambour, environ 6 s), les rebonds (quand une onde touche le bord du bassin, le tambour répond doucement). Au démarrage : frappe à fond, résonance et rebonds à zéro. Le son est sec, sans écho ni réverbe, comme le vrai.",
+    c5t: "ARP", c5: "La pluie : le tambour joue seul, lentement. Des phrases qui respirent, un motif qui revient, le sol grave de temps en temps. Quand tu joues, elle écoute, puis te répond. La nuit, elle ralentit.",
+    c6t: "PLAY · REC · SEQ", c6: "Le magnéto, comme dans Modular One : PLAY (ou OCT- et OCT+ maintenus 1 s) joue tes morceaux (envoyés avec l'appli Carnet) puis tes croquis ; OCT+ le suivant, OCT- le début. REC maintenu garde ta dernière phrase dans le carnet. SEQ maintenu : la liste, K1 choisit ; REC deux fois efface un croquis.",
+    c7t: "SAVE · SEL", c7: "Garde ton tambour (maintenu 2 s : celui d'origine) · nourrit les carpes.",
+    c8t: "GLO · MASTER · OCT", c8: "Les réglages (K1 la ligne, K2 la valeur : la tonalité, de do à si, le nombre de carpes, les ronds sur l'eau, l'hiver, le canal MIDI, l'accordage, le haut-parleur, la veille) · le volume · l'octave.",
+    riskTitle: "À lire avant",
+    beta: "Modular Koi est une version bêta, non officielle. Elle peut avoir des bugs. Tu l'installes à tes risques : l'auteur ne peut pas être tenu responsable d'un problème sur ton FM-1.",
+    presets: "L'installation remplace le firmware M-VAVE : les presets que tu as faits avec le firmware d'origine sont perdus, et on ne peut pas les exporter avant.",
+    back: "Pour revenir au firmware officiel : l'outil de mise à jour de M-VAVE (Downloads), avec le firmware officiel du FM-1.",
+    newchip: "Les FM-1 récents (vendus depuis fin 2026, le logo imprimé sur la façade) ont une autre puce de mémoire. Modular One 0.3 et Modular Koi 0.1 la connaissent. Un FM-1 récent qui a reçu Modular One 0.2 ou plus ancien ne garde rien et refuse les mises à jour : il faut le passer en mode téléchargement (OCT- et OCT+ maintenus 5 secondes) et le récupérer avec l'outil ci-dessous.",
+    brick: "Si une installation échoue et que le FM-1 ne démarre plus, il faut un Transporter pour le récupérer :",
+    confirm: "Installer Modular Koi sur le FM-1 ? Les presets du firmware d'origine seront perdus.",
+    onDev: "Sur ton FM-1 : ",
+    onOther: "L'appareil branché : ",
+    v_ota: "Il est en mode mise à jour : Installer finit l'écriture.",
+    v_same: "C'est déjà cette version ({v}). Tu peux la réinstaller.",
+    v_update: "Installer le met à jour en {name} {v}.",
+    v_older: "Une version plus récente est installée. Installer {name} {v} revient en arrière.",
+    v_replace: "Installer {name} {v} le remplacera.",
+    v_fresh: "Installer {name} {v} le remplacera (les presets du firmware d'origine seront perdus).",
+    v_otherModel: "Ce n'est pas un FM-1 : ce firmware ne peut pas aller dessus, rien ne sera écrit.",
+    checking: "Lecture de l'appareil…",
+    based: "Basé sur", license: "Logiciel libre GPL-3.0, sans garantie. Code source :", notmvave: "Modular Koi n'est ni fait ni soutenu par M-VAVE ou Hügelton Instruments.",
+    nomidi: "Ce navigateur ne peut pas le faire. Ouvre la page dans Chrome ou Edge.", loadfail: "Impossible de charger : ",
+    ready: "Prêt : Modular Koi FM-1 ", start: "Le FM-1 répond, on commence", verify: "Vérification", loader: "Passage en mode mise à jour",
+    write: "Écriture… ne débranche pas", reboot: "Redémarrage", done: "Terminé. Les carpes sont dans le bassin.",
+    stopped: "Arrêté. Rebranche le câble USB et clique encore sur Installer : l'écriture reprend.",
+    error: "Erreur : ",
+    denied: "Le MIDI (SysEx) n'a pas été autorisé. Autorise le MIDI dans les réglages du site (à gauche de l'adresse) et clique encore.",
+    notfound: "FM-1 introuvable. Vérifie le câble USB (un câble de données), ferme les autres apps MIDI, et clique encore.",
+    model: "L'appareil branché n'est pas un FM-1 : rien n'a été écrit.",
+    lost: "La connexion USB a été perdue. Rebranche et clique encore sur Installer.",
+    noloader: "Le FM-1 en mode mise à jour est introuvable. Rebranche le câble USB et clique encore (il reste en mode mise à jour jusqu'à la fin). Un FM-1 récent (logo imprimé sur la façade) avec Modular One 0.2 ou plus ancien refuse les mises à jour : voir « À lire avant ».",
+    noreturn: "Le FM-1 n'est pas revenu. Éteins-le et rallume-le.",
+    mismatch: "Écrit, mais le FM-1 annonce une autre version : ",
+    badpkg: "Le fichier à installer est abîmé. Recharge la page.",
+    leave: "Écriture en cours. Ne ferme pas la page.",
+    whoOta: " : le FM-1 est en mode mise à jour. Clique Installer pour finir l'écriture.",
+    whoMine: " : Modular Koi est installé.", whoFm1: " : un FM-1. Prêt pour l'installation.",
+    whoOther: " : ce n'est pas un FM-1, cette page n'écrira rien dessus.",
+  },
+  en: {
+    title: "Modular Koi FM-1", tag: "Bungle Society's firmware that turns the FM-1 into a steel tongue drum. Hold it like a handheld console and play with your thumbs, over a pond of koi.",
+    h1: "1. Connect", s1: "Open this page in Chrome or Edge, on a computer (not Safari, not Firefox, not a phone).",
+    s2: "Connect the FM-1 straight to the computer with a USB data cable (no hub). Switch it on.",
+    s3: "Close other apps that use MIDI (your DAW, the M-VAVE app…).",
+    check: "Read the FM-1", h2: "2. Install",
+    s4: "Click Install, allow MIDI when Chrome asks, and unplug nothing until \"Done\" (about 2 minutes). The FM-1 restarts by itself.",
+    install: "Install", details: "Technical details",
+    nextTitle: "What now?",
+    next1: "The FM-1 restarts on Modular Koi. Hold it like a handheld console: the keys under your thumbs are the drum, in C major like a real one (the key changes in GLO).",
+    c1t: "THE THUMBS", c1: "One octave, as on the real drum: G, A, B under the C, and the high C on top. Left: G, C, E, G on the bottom row, B, B above. Right: A, F, D, A on the bottom row, and the high C on the big corner key. Middle, bottom: C D E F G A B C; top: C, D, E, G, A. The same tongues, everywhere under the thumbs.",
+    c2t: "ROLLS · HARMONIC", c2: "On the last tongue played. OP3: a roll that starts fast and slows down (a bouncing finger). MONO: one that starts slow and speeds up. A tap: the whole gesture; held, it goes on at its last speed. Their keys stay lit. POLY: harmonics (held, or a tap).",
+    c3t: "PRESETS · ALGORITHM", c3: "The drum's scale (major, pentatonic, minor, Akebono, Dorian, Hijaz; the key in GLO) · its material (steel, low drum, glass, wood).",
+    c4t: "SELECT · K1 to K3", c4: "Day and night · the strike (soft or hard), the resonance (middle: the real drum, about 6 s), the bounces (when a ripple reaches the pond's edge, the drum answers softly). At power-on: strike full, resonance and bounces at zero. The sound is dry, no echo, no reverb, as the real one.",
+    c5t: "ARP", c5: "The rain: the drum plays by itself, slowly. Phrases that breathe, a motif that returns, the low G now and then. When you play it listens, then answers you. At night it slows down.",
+    c6t: "PLAY · REC · SEQ", c6: "The tape, as in Modular One: PLAY (or OCT- and OCT+ held 1 s) plays your songs (sent with the Carnet app), then your sketches; OCT+ the next, OCT- the start. REC held keeps your last phrase in the sketchbook. SEQ held: the list, K1 chooses; REC twice erases a sketch.",
+    c7t: "SAVE · SEL", c7: "Keeps your drum (held 2 s: the original) · feeds the koi.",
+    c8t: "GLO · MASTER · OCT", c8: "The settings (K1 the line, K2 the value: the key, C to B, number of koi, ripples on the water, winter, MIDI channel, tuning, speaker, sleep) · volume · octave.",
+    riskTitle: "Read this first",
+    beta: "Modular Koi is an unofficial beta. It may have bugs. You install it at your own risk: the author cannot be held responsible for any problem with your FM-1.",
+    presets: "Installing replaces the M-VAVE firmware: the presets you made with the original firmware are lost, and they cannot be exported first.",
+    back: "To go back to the official firmware: M-VAVE's updater (Downloads), with the official FM-1 firmware.",
+    newchip: "Recent FM-1s (sold from late 2026, the logo printed on the front) have another memory chip. Modular One 0.3 and Modular Koi 0.1 know it. A recent FM-1 that got Modular One 0.2 or older keeps nothing and refuses updates: put it in download mode (OCT- and OCT+ held 5 seconds) and recover it with the tool below.",
+    brick: "If an install fails and the FM-1 no longer starts, recovering it needs a Transporter:",
+    confirm: "Install Modular Koi on the FM-1? The original firmware's presets will be lost.",
+    onDev: "On your FM-1: ",
+    onOther: "The connected device: ",
+    v_ota: "It is in update mode: Install finishes the writing.",
+    v_same: "This version is already installed ({v}). You can install it again.",
+    v_update: "Install updates it to {name} {v}.",
+    v_older: "A newer version is installed. Installing {name} {v} goes back.",
+    v_replace: "Installing {name} {v} replaces it.",
+    v_fresh: "Installing {name} {v} replaces it (the original firmware's presets will be lost).",
+    v_otherModel: "Not an FM-1: this firmware cannot go on it, nothing will be written.",
+    checking: "Reading the device…",
+    based: "Based on", license: "Free software, GPL-3.0, no warranty. Source:", notmvave: "Modular Koi is not made or supported by M-VAVE or Hügelton Instruments.",
+    nomidi: "This browser cannot do it. Open the page in Chrome or Edge.", loadfail: "Could not load: ",
+    ready: "Ready: Modular Koi FM-1 ", start: "The FM-1 answers, starting", verify: "Verifying", loader: "Switching to update mode",
+    write: "Writing… do not unplug", reboot: "Restarting", done: "Done. The koi are in the pond.",
+    stopped: "Stopped. Replug the USB cable and click Install again: the writing resumes.",
+    error: "Error: ",
+    denied: "MIDI (SysEx) access was not allowed. Allow MIDI in the site settings (left of the address) and click again.",
+    notfound: "FM-1 not found. Check the USB cable (a data cable), close other MIDI apps, and click again.",
+    model: "The connected device is not an FM-1: nothing was written.",
+    lost: "The USB connection was lost. Replug it and click Install again.",
+    noloader: "The FM-1 in update mode was not found. Replug the USB cable and click again (it stays in update mode until it is finished). A recent FM-1 (logo printed on the front) with Modular One 0.2 or older refuses updates: see \"Read this first\".",
+    noreturn: "The FM-1 did not come back. Switch it off and on.",
+    mismatch: "Written, but the FM-1 reports another version: ",
+    badpkg: "The file to install is damaged. Reload the page.",
+    leave: "Writing. Do not close the page.",
+    whoOta: ": the FM-1 is in update mode. Click Install to finish the writing.",
+    whoMine: ": Modular Koi is installed.", whoFm1: ": an FM-1. Ready to install.",
+    whoOther: ": not an FM-1, this page will write nothing to it.",
+  },
+};
+let lang = (() => { try { return localStorage.getItem("mclang"); } catch (e) { return null; } })() || ((navigator.language || "en").toLowerCase().startsWith("fr") ? "fr" : "en");
+if (!TEXT[lang]) lang = "en";
+const t = (k) => TEXT[lang][k];
+let lastKey = null, lastArg = "", lastBad = false, whoKey = null, whoId = "";
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach((e) => { e.textContent = t(e.dataset.t); });
+  document.querySelectorAll("[data-lang]").forEach((a) => a.classList.toggle("on", a.dataset.lang === lang));
+  if (lastKey) sayK(lastKey, lastArg, lastBad);
+  if (typeof sayDev === "function") sayDev();
+}
+document.querySelectorAll("[data-lang]").forEach((a) => a.addEventListener("click", () => { lang = a.dataset.lang; try { localStorage.setItem("mclang", lang); } catch (e) {} applyLang(); }));
+const sayK = (k, arg = "", bad = false) => { lastKey = k; lastArg = arg; lastBad = bad; $("status").textContent = t(k) + arg; $("status").className = bad ? "bad" : ""; };
+const log = (s) => { $("log").textContent += s + "\n"; };
+const bar = (f) => { $("bar").style.width = `${Math.max(0, Math.min(100, f))}%`; };
+const meta = {"version": "0.1", "product": "FM-1_901", "family": "koi", "name": "Modular Koi", "pkg": "../firmware/modular-koi-0.1.fwsc"};
+$("home").href = "https://bunglesociety.com";
+applyLang();
+let image = null, busy = false;
+const lock = (on) => { busy = on; $("go").disabled = on || !image; $("check").disabled = on; };
+window.addEventListener("beforeunload", (e) => { if (busy) { e.preventDefault(); e.returnValue = t("leave"); } });
+
+(async () => {
+  if (!navigator.requestMIDIAccess) { sayK("nomidi", "", true); return; }
+  try {
+    let pkg;
+    if (meta.b64) pkg = Uint8Array.from(atob(meta.b64), (c) => c.charCodeAt(0));
+    else {
+      const r = await fetch(meta.pkg);
+      if (!r.ok) throw new Error(`${meta.pkg}: HTTP ${r.status}`);
+      pkg = new Uint8Array(await r.arrayBuffer());
+    }
+    if (productOf(pkg) !== meta.product) { sayK("badpkg", "", true); return; }
+    image = logicalImage(pkg);
+    sayK("ready", meta.version);
+    lock(false);
+  } catch (e) { sayK("loadfail", e.message, true); }
+})();
+
+async function midi() {
+  try { return await navigator.requestMIDIAccess({ sysex: true }); }
+  catch (e) { sayK("denied", "", true); return null; }
+}
+
+$("check").addEventListener("click", async () => {
+  if (busy) return;
+  const m = await midi();
+  if (!m) return;
+  lock(true);
+  try { await readDev(m); } catch (e) { $("who").textContent = t("error") + e.message; }
+  lock(false);
+});
+var found = null;                                            /* the last reading of the device (fm1probe.js) */
+const vText = (v) => t("v_" + v.key).replace("{name}", meta.name).replace("{v}", meta.version);
+function sayDev() {
+  if (!found) return;
+  $("who").textContent = found.dev ? t(found.v.ok ? "onDev" : "onOther") + devLabel(found.dev, lang) + ". " + vText(found.v) : t("notfound");
+  $("who").className = found.v && !found.v.ok ? "bad" : "";
+}
+async function readDev(m) {
+  $("who").textContent = t("checking");
+  $("who").className = "";
+  const dev = await probe(new Updater(m, log));
+  found = { dev, v: dev ? verdict(dev, meta) : null };
+  if (dev) log(`device: ${dev.id.text} / ${dev.info ?? "(no INFO)"} -> ${dev.family} ${dev.version}: ${found.v.key}`);
+  sayDev();
+  return found;
+}
+
+async function run(img, product, doneKey) {
+  const m = await midi();
+  if (!m) return;
+  lock(true);
+  $("after").classList.remove("on");
+  bar(0);
+  try {
+    const up = new Updater(m, log);
+    const step = (k, a) => {
+      log(`${k} ${a ?? ""}`);
+      if (k === "start") sayK("start");
+      if (k === "verify") { sayK("verify"); bar(Math.min(8, a / 9)); }
+      if (k === "loader") sayK("loader");
+      if (k === "write") { sayK("write"); bar(8 + Math.min(90, (a * 512 / img.length) * 90)); }
+      if (k === "reboot") sayK("reboot");
+      if (k === "done") bar(100);
+    };
+    const ota = await up.find((id) => /^ota-/i.test(id.model));
+    let ok = true;
+    if (ota) { ota.link.close(); ok = await up.resume(img, step, product); }
+    else await up.install(img, product, step);
+    sayK(ok ? doneKey : "stopped", "", !ok);
+    if (ok && doneKey === "done") $("after").classList.add("on");
+  } catch (e) {
+    if (e && e.code && TEXT[lang][e.code]) sayK(e.code, e.code === "mismatch" ? (e.detail || "") : "", true);
+    else sayK("error", e && e.message, true);
+    log(String(e && e.stack || e));
+  }
+  lock(false);
+}
+
+$("go").addEventListener("click", async () => {      /* first what is on it: may it go there? */
+  if (busy || !image) return;
+  const m = await midi();
+  if (!m) return;
+  lock(true);
+  let f = null;
+  try { f = await readDev(m); } catch (e) { $("who").textContent = t("error") + e.message; }
+  lock(false);
+  if (!f || !f.dev) { sayK("notfound", "", true); return; }
+  if (!f.v.ok) { sayK("model", "", true); return; }
+  if (confirm(t("onDev") + devLabel(f.dev, lang) + ".\n" + vText(f.v) + "\n\n" + t("confirm"))) run(image, meta.product, "done");
+});
+
+</script>
+</body>
+</html>

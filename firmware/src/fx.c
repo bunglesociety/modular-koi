@@ -236,6 +236,8 @@ static const uint8_t DIV_DOT[3] = {2, 3, 1};           /* 3 quarters >> this */
 static volatile uint32_t m1_dly_target;   /* Modular One: the echo TIME fader, samples (0 = the tempo divisions) */
 static int32_t m1_dq = 11000 << 12;        /* the echo time as it runs, Q12 samples (fx_buses) */
 static volatile uint8_t m1_vintage;       /* Modular One: FX, the vintage (m1_vint) */
+static volatile uint8_t m1_vtape = 128, m1_vwarm = 128;   /* its two amounts, 0..128 (the FM-1's FX K3 TAPE, K4 WARMTH;
+                                                           * the SMK-37's FX: both whole) */
 static volatile uint8_t m1_la;            /* Modular One: CHORD, the A 440 to tune to (m1_tone) */
 
 /* FX, the vintage: an old cassette deck, worn. On the mix, before the master (dc_block takes the offset of the even
@@ -272,19 +274,23 @@ static inline void m1_vint(int32_t *l, int32_t *r)
         return;
     }
     /* the read point, 60 samples back +- 38 (wow) +- 0.7 (flutter), Q8 */
-    pos = (uint32_t)(60 * 256 + ((sine_i(m1v_wow) * 38) >> 7) + ((sine_i(m1v_flt) * 3) >> 9));
+    {
+        int32_t tp = m1_vtape;                                   /* (TAPE: the wow and the flutter, 0..128) */
+        pos = (uint32_t)(60 * 256 + ((((sine_i(m1v_wow) * 38) >> 7) * tp) >> 7) + ((((sine_i(m1v_flt) * 3) >> 9) * tp) >> 7));
+    }
+    f = m1_vwarm;                                                /* (WARMTH: the saturation and the top, 0..128) */
     for (k = 0; k < 2; k++) {
         int32_t a, b, y;
         m1v_buf[k][m1v_w] = in[k];
         i = (m1v_w - (pos >> 8)) & (M1V_LEN - 1u);
-        f = pos & 255u;
         a = m1v_buf[k][i];
         b = m1v_buf[k][(i - 1u) & (M1V_LEN - 1u)];
-        y = a + (((b - a) >> 4) * (int32_t)f >> 4);
+        y = a + (((b - a) >> 4) * (int32_t)(pos & 255u) >> 4);
+        a = y;
         y = m1v_warm(y);
         m1v_lp[k][0] += ((y - m1v_lp[k][0]) * 15) >> 5;       /* ~4.5 kHz */
         m1v_lp[k][1] += ((m1v_lp[k][0] - m1v_lp[k][1]) * 20) >> 5;   /* ~7 kHz */
-        y = m1v_lp[k][1];
+        y = a + (((m1v_lp[k][1] - a) >> 7) * (int32_t)f);
         in[k] += (((y - in[k]) >> 3) * (int32_t)m1v_mix) >> 8;
     }
     m1v_w = (m1v_w + 1u) & (M1V_LEN - 1u);

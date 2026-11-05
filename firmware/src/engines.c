@@ -40,7 +40,9 @@ static uint8_t eng_mem_owner[NPART];       /* engine index + 1 whose state is in
 #if FELUCCA_SLICE
 #include "eng_slice.c"
 #endif
-#if MODULAR_ONE
+#if MODULAR_KOI
+#include "eng_koi.c"            /* KOI: the tongue drum and the bowls (Modular Koi) */
+#elif MODULAR_ONE
 #include "eng_ville.c"          /* VILLE: Modular Town's synth (Modular One on the SMK-37) */
 #endif
 
@@ -66,7 +68,9 @@ static const engine_t *const ENGINES[NENGINES] = {
 #if FELUCCA_SLICE
     &ENG_SLICE,                  /* 13 (FELUCCA_SLICE=0 builds without it) */
 #endif
-#if MODULAR_ONE
+#if MODULAR_KOI
+    &ENG_KOI,                    /* 13 (Modular Koi) */
+#elif MODULAR_ONE
     &ENG_VILLE,                  /* 13 (ENGI_VILLE, Modular One) */
 #endif
 };

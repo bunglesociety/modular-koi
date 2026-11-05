@@ -91,6 +91,9 @@ static int ed_smp_erase(uint32_t k, uint32_t all)  /* header sector, or the whol
     if (!SMP_USER_HAS(k))
         return -8;                                 /* SMK: USR3 has no flash */
     st_stock_release();                            /* before the first erase in USRFLASH: storage.c */
+#elif MODULAR_ONE
+    if (!SMP_USER_HAS(k))
+        return -8;                                 /* Modular Compagnon FM-1: slots 2, 3 are the sketches and songs */
 #endif
     usr_nz[k] = 0;
     for (i = 0; i < 16u; i++)
@@ -107,9 +110,9 @@ static int ed_flash_stop(void);
 static int ed_smp_end(uint32_t k, const uint8_t *a, uint32_t na)
 {
     const smp_user_hdr_t *h = (const smp_user_hdr_t *)ed_smp_buf;
-#if BOARD_SMK37
+#if BOARD_SMK37 || MODULAR_ONE
     if (!SMP_USER_HAS(k))
-        return 4;                                      /* SMK: USR3 has no flash */
+        return 4;                                      /* SMK: USR3 has no flash (Modular Compagnon FM-1: 2, 3) */
 #endif
     if (ed_unpack7(a, na, ed_smp_buf, sizeof(smp_user_hdr_t)) != sizeof(smp_user_hdr_t))
         return 1;
@@ -433,6 +436,9 @@ static int ed_args_ok(uint32_t cmd, const uint8_t *a, uint32_t n)
     }
 }
 
+#if MODULAR_ONE && !BOARD_SMK37
+static int ed_m1_handle(uint32_t cmd, const uint8_t *a, uint32_t na);   /* Modular Compagnon FM-1: songs, sketches */
+#endif
 static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0 and F7 */
 {
     if (n < 4u)
@@ -454,6 +460,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     if (ed_menu_handle(cmd, a, na)) { ed_send(); return; }
     if (ed_learn_handle(cmd, a, na)) { ed_send(); return; }
     if (ed_palette_handle(cmd, a, na)) { ed_send(); return; }
+#if MODULAR_ONE && !BOARD_SMK37
+    if (ed_m1_handle(cmd, a, na)) { ed_send(); return; }   /* (m1_book.c: the Carnet app) */
+#endif
     switch (cmd) {
     case ED_MOTION: {
         track_t *t = &trk[a[0]]; uint32_t rc = 0;

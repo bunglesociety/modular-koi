@@ -286,6 +286,32 @@ def dust(c, xs):
     for x in xs: c.pat(x, 61, [(0, 0), (1, 0), (0, -1), (-1, 0)], "F", True)
     return c
 
+def ball(c, x, y, k="M", line="h"):
+    """a small ball (yarn for the cat), its middle at cell x, y (props are drawn in cells)"""
+    for dy in range(-3, 4):
+        for dx in range(-3, 4):
+            if dx * dx + dy * dy <= 10: c.m[(x + dx, y + dy)] = k
+            elif dx * dx + dy * dy <= 17: c.m.setdefault((x + dx, y + dy), "o")
+    for i in (-2, -1, 0, 1, 2): c.m[(x + i, y + (i * i) // 3 - 1)] = line
+    return c
+
+def flower(c, x, y, petal="M", heart="b"):
+    """a little flower on the floor (cells), its heart at x, y"""
+    for cx_, cy_ in ((0, -2), (-2, 0), (2, 0), (0, 2)):
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if abs(dx) + abs(dy) < 2: c.m[(x + cx_ + dx, y + cy_ + dy)] = petal
+    c.m[(x, y)] = heart
+    for dx in range(-4, 5):
+        for dy in range(-4, 5):
+            if (x + dx, y + dy) not in c.m and any((x + dx + a, y + dy + b) in c.m and c.m[(x + dx + a, y + dy + b)] in (petal, heart) for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                c.m[(x + dx, y + dy)] = "o"
+    return c
+
+def peek(c, dx):
+    """only the part of a pose the screen's edge lets through (a head peeking in): the pose moved dx cells"""
+    d = C(); d.m = {(x + dx, y): k for (x, y), k in c.m.items()}; return d
+
 def quest(c):
     c.pat(22, 22, [(0, 0), (1, -1), (2, -1), (3, 0), (3, 1), (2, 2), (2, 3), (2, 5)], "n", True); return c
 
@@ -388,6 +414,59 @@ fr += walk(20, 38, 1) + [(sit("happy"), 300)]
 clip("TERRITOIRE", fr)
 fr = [(sit("open"), 110)] * 10 + [(sit("squeeze", "o", flat=1, tilt=-0.08), 110)] * 14 + [(sit("content", tail=math.sin(i / 3)), 110) for i in range(16)]
 clip("BAILLEMENT", fr)
+
+# DANSE: while the ARP or the loop plays, a step of the dance on each beat (m1_draw.c steps it, not the clock): he sways
+# from one side to the other, a paw up, then the other, a little bounce between, the notes around him
+fr = []
+for i in range(8):
+    k = i % 4
+    if k == 0: c = sit("happy", tail=-1, tilt=-0.25, cx=35, paw=(24, 42 + (i // 4) * 4))     # a paw up high, leaning
+    elif k == 2: c = sit("happy", tail=1, tilt=0.25, cx=41, paw=(50, 44 - (i // 4) * 4))     # .. the other way
+    else: c = sit("happy", tail=0, cx=38, base=58, ear=1)                                     # the bounce between
+    fr.append((notes(c, i // 2) if k == 1 else c, 150))
+clip("DANSE", fr, 1)
+
+# CALIN (the FM-1's SEL: a cuddle): his eyes close, he leans into the hand, purrs (his tail curls), hearts rise
+fr = [(sit("happy"), 200)]
+for i in range(22):
+    lean = (0, 0.12, 0.2, 0.12)[(i // 3) % 4]
+    fr.append((hearts(sit("content", tail=math.sin(i / 3) * 0.6, tilt=lean, ear=1 if i % 6 < 3 else 0), 1 + min(i // 5, 3)), 130))
+fr += [(sit("happy", mouth="w"), 600)]
+clip("CALIN", fr)
+
+# JOUER (SEL): a ball of yarn rolls in; he watches it, bats it up, it comes down, he bats it again, it rolls off
+fr = [(ball(sit("wide", look=1, tilt=0.1), x, 73), 110) for x in (76, 70, 64, 60)]
+fr += [(ball(sit("wide", look=1, tilt=0.15, ear=1), 60, 73), 300)]
+for k, (bx, by_) in enumerate(((58, 66), (63, 56), (69, 52), (72, 58), (68, 68), (62, 73))):
+    fr.append((ball(sit("happy" if 1 < k < 5 else "wide", look=1, paw=(47, 54) if k == 0 else None), bx, by_), 100))
+for k, (bx, by_) in enumerate(((66, 64), (73, 58), (80, 62))):
+    fr.append((ball(sit("wide", look=1, paw=(47, 54) if k == 0 else None), bx, by_), 100))
+fr += [(sit("happy", "w", tail=0.5), 600)]
+clip("JOUER", fr)
+
+# CACHE (SEL): off he trots, left; a moment of nothing; his head peeks in at the edge, twice; then he dashes back in
+# from the right and sits, pleased with himself
+fr = [(sit("open", look=-1), 250)] + walk(38, -22, -1, step=5, ms=80) + [(C(), 120)] * 6
+fr += [(peek(sit("open", look=1, tilt=0.2), -40), 200), (peek(sit("open", look=1, tilt=0.2), -37), 600),
+       (peek(sit("content", look=1, tilt=0.2), -37), 150), (peek(sit("open", look=1, tilt=0.2), -37), 500), (C(), 500)]
+fr += walk(100, 40, -1, step=5, ms=60)
+fr += [(sit("happy", tail=1), 300), (hearts(sit("happy", "w", tail=0.5), 2), 700)]
+clip("CACHE", fr)
+
+# CADEAU (SEL): off he goes to the right and comes back with a flower, sets it down at your feet, and is very proud
+fr = [(sit("open", look=1), 250)] + walk(38, 98, 1, step=5, ms=80) + [(C(), 120)] * 8
+fr += walk(98, 50, -1, step=5, ms=90)
+fr += [(flower(sit("happy", look=1), 62, 74), 500), (hearts(flower(sit("happy", "w", tail=0.6), 62, 74), 2), 600),
+       (hearts(flower(sit("happy", "w", tail=-0.6), 62, 74), 3), 600), (flower(sit("open", look=1), 62, 74), 500)]
+clip("CADEAU", fr)
+
+# PASSE (the tape plays, its reels fill the screen): now and then he walks in, stops under the reels, looks up at them
+# turning, wonders, and walks on out (poses he has already: no new picture)
+fr = walk(-22, 38, 1, step=5, ms=110) + [(sit("open"), 300)]
+fr += [(sit("open", look=-1, tilt=-0.12, ear=1), 120), (sit("open", look=-1, tilt=-0.12), 1600),
+       (quest(sit("open", look=-1, tilt=-0.12)), 900), (sit("open", look=1, tilt=0.12), 1400), (sit("happy"), 600)]
+fr += walk(38, 102, 1, step=5, ms=110)
+clip("PASSE", fr)
 
 
 # ------------------------------------------------------------------ encode

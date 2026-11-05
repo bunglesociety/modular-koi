@@ -135,8 +135,17 @@
 #include "console.c"
 #endif
 #include "master.c"              /* the MASTER pot (#137: read before the audio starts) */
-#if MODULAR_ONE
-#include "m1_ui.c"              /* Modular One on the SMK-37: the controls */
+#if MODULAR_KOI
+#include "koi_ui.c"             /* Modular Koi on the FM-1: the controls (the keys, the rain: koi_play.c, in seq.c) */
+#include "m1_book.c"            /* .. the tape's songs and sketches, as Modular One's */
+#include "koi_draw.c"           /* .. and the screen: the pond */
+#elif MODULAR_ONE
+#if BOARD_SMK37
+#include "m1_ui.c"              /* Modular Compagnon on the SMK-37: the controls */
+#else
+#include "m1_ui_fm1.c"          /* .. on the FM-1: its controls, Modular One's pages */
+#include "m1_book.c"            /* .. its songs and sketches in flash (the tape: m1_tape.c, in seq.c) */
+#endif
 #include "m1_draw.c"            /* .. and the screen: the cat */
 #endif
 #include "main.c"

@@ -264,6 +264,10 @@ python3 tools/gen_pets.py -o build/gen/cat_sprites.h >/dev/null
 $CC -O1 -w -DMODULAR_ONE=1 -DFELUCCA_SLICE=0 -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/m1_screen" tests/m1_screen.c -lm
 mkdir -p build/m1_screen && rm -f build/m1_screen/*.ppm
 run "Modular Compagnon screen: a clean start, every companion's clips on the grid, they look, listen, sleep at night, wake; the ARP, the A 440; colour under GREY" "$OUT/m1_screen" build/m1_screen
+# Modular Compagnon on the FM-1 (m1_ui_fm1.c): PRESETS, the pages, the ARP, GLO's lines, the companions; pictures in build/m1_fm1
+$CC -O1 -w -DMODULAR_ONE=1 -DFELUCCA_SLICE=0 -Ibuild/gen -Ifirmware/src -Itests -o "$OUT/m1_fm1" tests/m1_fm1.c -lm
+mkdir -p build/m1_fm1 && rm -f build/m1_fm1/*.ppm
+run "Modular Compagnon FM-1: the sounds on PRESETS, HOME ENV EDIT FX's knobs, the ARP held, GLO (K1 the line, K2 its value), the companions, the night" "$OUT/m1_fm1" build/m1_fm1
 python3 tools/fm1pkg_make.py --board smk37 build/felucca.bin build/loader/ota.bin "$OUT/smk_new.fwsc" >/dev/null
 python3 tools/fm1pkg_make.py --board smk37 "$OUT/old_app.bin" build/loader/ota.bin "$OUT/smk_old.fwsc" >/dev/null
 run "SMK-37 Pro package layout (fm1pkg_make --board smk37): PRCT 0x9D000, stock region table" python3 tests/smk_pkg_test.py "$OUT/smk_new.fwsc"
@@ -518,8 +522,11 @@ else
     run "ASan/UBSan fuzz: user sample slot headers -> scan -> SAMPLE / GRAIN / SLICE (1000, seed 17)" "$A/fuzz_smp" 1000 17
 fi
 
+BUDGET=tests/target_budget.txt                         # (the last build's board: the FM-1's input scan costs more)
+grep -q "fm1c\|board fm1$" build/.board 2>/dev/null && BUDGET=tests/target_budget_fm1.txt
+grep -q "board koi" build/.board 2>/dev/null && BUDGET=tests/target_budget_koi.txt   # (its own: the drum in the ISR)
 run "regression: target cost of the render loops (pi32v2 disassembly)" python3 tests/target_budget.py \
-    build/felucca.dis tests/target_budget.txt
+    build/felucca.dis "$BUDGET"
 
 run "installer CLI (fm1_install.py) against a simulated FM-1" python3 tests/install_test.py
 

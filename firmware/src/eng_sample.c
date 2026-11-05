@@ -54,7 +54,12 @@ static uint32_t pow2_q16(int32_t d16)
 _Static_assert(SMP_USER_BASE + SMP_USER_FLASH_SLOTS * SMP_USER_SIZE <= 0xEA000u, "SMK: user slots past FL_SMP");
 #else
 #define SMP_USER_BASE 0xA0000u
+#if MODULAR_ONE                                      /* Modular Compagnon on the FM-1: slots 2 and 3 are the sketchbook and
+                                                      * the songs (m1_book.c, as Modular One's): no samples there */
+#define SMP_USER_HAS(k) ((uint32_t)(k) < 1u)
+#else
 #define SMP_USER_HAS(k) 1
+#endif
 #endif
 #define SMP_USER_DATA 512u
 #define SMP_USER_MAGIC 0x504D5346u                  /* "FSMP" */

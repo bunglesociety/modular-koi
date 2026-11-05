@@ -641,9 +641,19 @@ static __attribute__((noinline)) void cin_keep(track_t *t, uint32_t note, uint32
     cin_up[i] &= (uint8_t)~(1u << k);
 }
 
+#if MODULAR_KOI
+static int koi_key(uint32_t k, int down);            /* Modular Koi: every key is the drum's (koi_play.c) */
+#endif
+#if MODULAR_ONE && !BOARD_SMK37
+static void sk_put(uint32_t note, uint32_t vel);    /* Modular Compagnon FM-1: the sketchbook (m1_tape.c) */
+#define M1_SK_PUT(n, v) sk_put(n, v)
+#else
+#define M1_SK_PUT(n, v) ((void)0)
+#endif
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
     last_note = (uint8_t)note;
+    M1_SK_PUT(note, vel ? vel : 1u);                /* (the sketchbook hears everything played) */
     if (cin_left)
         cin_keep(t, note, vel);
     if (rec_on(t) && !t->p[P_AMODE])               /* (ARP on: arp_tick records its notes) */
@@ -660,6 +670,7 @@ static void input_off(track_t *t, uint32_t note)
 {
     if (midi_note_held(t, note))
         return;
+    M1_SK_PUT(note, 0);
     if (cin_left) {                                 /* a kept note let go before step 1: recorded, then let go */
         uint32_t i = trk_index(t), k;
         for (k = 0; k < cin_n[i]; k++)
@@ -861,6 +872,11 @@ static void keyboard_block(void)
                 kb_note[k] = KB_SILENT;
                 continue;
             }
+#if MODULAR_KOI
+            kb_note[k] = KB_SILENT;
+            if (koi_key(k, 1))                    /* Modular Koi: the thumbs' drum */
+                continue;
+#endif
             if (lay) {                            /* a layer's button held (or locked): the key is the layer's */
                 kb_note[k] = KB_SILENT;           /* (ui_layer.c), with FX an effect (perform.c) */
                 kb_layer |= 1u << k;
@@ -881,6 +897,10 @@ static void keyboard_block(void)
             kb_lat(k);
 #endif
         } else {
+#if MODULAR_KOI
+            if (koi_key(k, 0))
+                continue;
+#endif
             if ((kb_layer >> k) & 1u) {
                 kb_layer &= ~(1u << k);
                 perf_key_press(k, 0);
@@ -1408,12 +1428,21 @@ static void smk_wheels_block(void)
 }
 #endif
 
+#if MODULAR_ONE && !BOARD_SMK37
+#include "m1_tape.c"                              /* Modular Compagnon FM-1: the tape and the sketchbook */
+#endif
+#if MODULAR_KOI
+#include "koi_play.c"                             /* Modular Koi: the thumbs, the rain, the ripples */
+#endif
 #if MODULAR_ONE
 static uint32_t m1_rt_ms;                         /* the last MIDI clock heard (Modular Compagnon follows it) */
 #endif
 static void events_block(uint32_t n)
 {
     uint32_t i, pr, seq_n = n;
+#if MODULAR_ONE && !BOARD_SMK37
+    sk_clock += n;
+#endif
 #if MODULAR_ONE
     if (song.g[G_CLOCK] && fm1_ms - m1_rt_ms > 1500u)
         song.g[G_CLOCK] = 0;                        /* the DAW's clock gone: back to our own tempo */
@@ -1494,6 +1523,12 @@ static void events_block(uint32_t n)
     smk_wheels_block();
 #endif
     keyboard_block();
+#if MODULAR_ONE && !BOARD_SMK37
+    demo_block(n);                                    /* the tape's player */
+#endif
+#if MODULAR_KOI
+    koi_block(n);
+#endif
     while (mi_r != mi_w) {                            /* USB-MIDI (and TRS) in */
         uint32_t at = mi_r % MQ, pkt = midi_in_q[at], status = (pkt >> 8) & 0xFFu;
         uint32_t st = status & 0xF0u, ch = status & 0x0Fu;
