@@ -43,9 +43,11 @@ Croquis et morceaux sont gardés au même endroit que dans Modular One : on pass
 Sketches and songs live where Modular One keeps them: switching between the two keeps them.
 
 Les FM-1 récents (vendus depuis fin 2026, le logo imprimé sur la façade) ont une autre puce de mémoire (UC25HQ80,
-JEDEC 0xB36014) : Modular Koi la connaît, comme celle des premiers (Puya P25Q80, 0x856014).
+JEDEC 0xB36014) : Modular Koi la reconnaît, comme celle des premiers (Puya P25Q80, 0x856014). Compatible, comme
+Felucca et d'autres firmwares, mais pas encore testé par l'auteur sur un FM-1 récent : vos retours sont bienvenus.
 Recent FM-1s (sold from late 2026, the logo printed on the front) have another flash chip (UC25HQ80, JEDEC 0xB36014):
-Modular Koi knows it, as well as the first units' (Puya P25Q80, 0x856014).
+Modular Koi recognises it, as well as the first units' (Puya P25Q80, 0x856014). Compatible, as Felucca and other
+firmwares, but not yet tested by the author on a recent FM-1: reports welcome.
 
 ## Construire · Build
 
