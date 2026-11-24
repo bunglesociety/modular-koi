@@ -41,7 +41,7 @@ def page(meta, hero_src, map_src, fm1=False, koi=False):
 
 def check(raw, path):
     product = product_of(raw)
-    if not re.fullmatch(r"(SMK-37 Elite|FM-1)_9\d\d", product) or b"FELUCCA-LOADER-1" not in raw:
+    if not re.fullmatch(r"(SMK-37 Elite|FM-1)_\d\d\d", product) or b"FELUCCA-LOADER-1" not in raw:
         raise SystemExit(f"{path}: not a Modular Compagnon SMK-37 Elite or FM-1 package (identity {product!r})")
     return product
 

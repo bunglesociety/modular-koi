@@ -47,8 +47,10 @@ export function verCmp(a, b) {
 export function classify(id, info) {
   if (/^ota-/i.test(id.model)) return { family: "ota", name: "", version: "" };
   const nnn = id.version, idver = nnn >= 900 ? `${Math.floor(nnn / 10) % 10}.${nnn % 10}` : "";
-  if (info == null)
-    return nnn < 900 ? { family: "stock", name: "M-VAVE", version: String(nnn).padStart(3, "0") }
+  const OWN = { 891: ["one", "Modular One"], 892: ["koi", "Modular Koi"], 893: ["compagnon", "Modular Compagnon"] };
+  if (info == null)          // (the Modular family's own identities, The Firmware Hub: FM-1_891 One, _892 Koi, _893 Compagnon)
+    return OWN[nnn] ? { family: OWN[nnn][0], name: OWN[nnn][1], version: "" }
+         : nnn < 800 ? { family: "stock", name: "M-VAVE", version: String(nnn).padStart(3, "0") }
                      : { family: "unknown", name: "", version: idver };
   const s = info.replace(/^FELUCCA\s*/i, "").trim();
   let m;

@@ -60,6 +60,9 @@ PRODUCT = "FM-1_900"                # package identity; release builds are FM-1_
 BOARD = "fm1"                       # fm1 (default) or smk37: BOARD env or --board
 BOARD_PREFIX = {"fm1": "FM-1_9", "fm1c": "FM-1_9", "koi": "FM-1_9", "smk37": "SMK-37 Pro_9"}   # identity of a release build: prefix + X + Y
 BOARD_DEFS = {"fm1": [], "fm1c": ["-DMODULAR_ONE=1", "-DFELUCCA_SLICE=0"], "koi": ["-DMODULAR_ONE=1", "-DFELUCCA_SLICE=0", "-DMODULAR_KOI=1"], "smk37": ["-DBOARD_SMK37=1"]}       # the FM-1 build gets no new flag (byte-identical)
+# The Firmware Hub gave the Modular family its own identities (Nov 2026), the same for every release; the version is
+# in the INFO string. Modular Koi 0.1.1 on, Modular Compagnon FM-1 0.9.1 on (Modular One, FM-1_891, is its own repo)
+OWN_ID = {"koi": "FM-1_892", "fm1c": "FM-1_893"}
 BOARD_STEM = {"fm1": "felucca", "fm1c": "modular-compagnon-fm1", "koi": "modular-koi-fm1", "smk37": "modular-compagnon-smk37"}
 BOARD_HW = {"fm1": "fm1", "fm1c": "fm1", "koi": "fm1", "smk37": "smk37"}   # fm1c: Modular Compagnon on the FM-1 (the FM-1's flash)        # package name: STEM.fwsc, STEM-X.Y.fwsc
 # smk37: the keyboard's model name (MODEL env or --model); one hardware, three names. pro adds no flag
@@ -425,6 +428,8 @@ def main():
         if not m:
             raise SystemExit(f"--release {a.release}: use X.Y, X.Y.Z, X.Y.Z.W or X.Y-suffix, one digit each")
         PRODUCT = BOARD_PREFIX[BOARD] + m[1] + m[2]
+        if BOARD in OWN_ID:                    # (the Modular family's own identities, fixed across releases)
+            PRODUCT = OWN_ID[BOARD]
         VERSION = "v" + a.release.lower()      # e.g. v1.0, v1.1-rc1
         if BOARD == "koi":                     # INFO says which firmware: the install pages read it (web/fm1probe.js)
             VERSION = "KOI " + a.release.lower()
