@@ -893,7 +893,7 @@ document.querySelectorAll("[data-lang]").forEach((a) => a.addEventListener("clic
 const sayK = (k, arg = "", bad = false) => { lastKey = k; lastArg = arg; lastBad = bad; $("status").textContent = t(k) + arg; $("status").className = bad ? "bad" : ""; };
 const log = (s) => { $("log").textContent += s + "\n"; };
 const bar = (f) => { $("bar").style.width = `${Math.max(0, Math.min(100, f))}%`; };
-const meta = {"version": "0.1.1", "product": "FM-1_892", "family": "koi", "name": "Modular Koi", "pkg": "../firmware/modular-koi-0.1.1.fwsc"};
+const meta = {"version": "0.1.2", "product": "FM-1_892", "family": "koi", "name": "Modular Koi", "pkg": "../firmware/modular-koi-0.1.2.fwsc"};
 $("home").href = "https://bunglesociety.com";
 applyLang();
 let image = null, busy = false;
